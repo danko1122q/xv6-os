@@ -23,6 +23,7 @@ struct RGBA closeColor;
 struct RGBA txtColor;
 struct RGBA minimizeColor;
 struct RGBA iconColor;
+struct RGBA titleTextColor;
 
 #define MAX_WINDOW_CNT 50
 
@@ -132,29 +133,43 @@ int getMessage(msg_buf *buf, message *result) {
 }
 
 void wmInit() {
-	titleBarColor.R = 244;
-	titleBarColor.G = 160;
-	titleBarColor.B = 5;
+	// Modern title bar - dark blue/gray
+	titleBarColor.R = 45;
+	titleBarColor.G = 52;
+	titleBarColor.B = 64;
 	titleBarColor.A = 255;
 
-	dockColor.R = 15;
-	dockColor.G = 157;
-	dockColor.B = 88;
+	// Modern dock - dark
+	dockColor.R = 30;
+	dockColor.G = 35;
+	dockColor.B = 42;
 	dockColor.A = 255;
 
-	closeColor.R = 219;
-	closeColor.G = 68;
-	closeColor.B = 55;
+	// Modern close button - red
+	closeColor.R = 239;
+	closeColor.G = 83;
+	closeColor.B = 80;
 	closeColor.A = 255;
 
-	iconColor.R = 6;
-	iconColor.G = 6;
-	iconColor.B = 6;
+	// Icon color - white
+	iconColor.R = 255;
+	iconColor.G = 255;
+	iconColor.B = 255;
 	iconColor.A = 255;
 
-	txtColor.R = txtColor.G = txtColor.B = txtColor.A = 255;
-	minimizeColor.R = minimizeColor.G = minimizeColor.B = 120;
+	// Title text - white
+	titleTextColor.R = 255;
+	titleTextColor.G = 255;
+	titleTextColor.B = 255;
+	titleTextColor.A = 255;
+	
+	// Minimize button - gray
+	minimizeColor.R = 100;
+	minimizeColor.G = 108;
+	minimizeColor.B = 120;
 	minimizeColor.A = 255;
+
+	txtColor.R = txtColor.G = txtColor.B = txtColor.A = 255;
 
 	mouseShape = 0;
 	wm_mouse_pos.x = SCREEN_WIDTH / 2;
@@ -384,11 +399,6 @@ void wmHandleMessage(message *msg) {
 						   win->position.xmax &&
 					   wm_mouse_pos.x + 30 <=
 						   win->position.xmax) {
-					// not nessasary for current design, we
-					// could just minimize the window here
-					// but we may want minimized window to
-					// halt updating so passing this message
-					// to the window first
 					newmsg.msg_type = WM_WINDOW_MINIMIZE;
 					dispatchMessage(
 						&windowlist[windowlisttail]
@@ -432,11 +442,6 @@ void wmHandleMessage(message *msg) {
 		} else if (clickedOnContent) {
 			clickedOnContent = 0;
 			// check if clicked on window dock
-			// because we have a simple dock, updating it is
-			// entirely in the kernel. if we want, we can let the
-			// desktop program handle it with the help of some new
-			// system calls related to the information of opened
-			// windows.
 			if (windowlisttail == desktopId &&
 			    wm_mouse_pos.y >= SCREEN_HEIGHT - DOCK_HEIGHT &&
 			    wm_mouse_pos.y <= SCREEN_HEIGHT) {
@@ -491,12 +496,21 @@ void drawWindowBar(struct RGB *dst, kernel_window *win, struct RGBA barcolor) {
 	int xmax = win->position.xmax + 1;
 	int ymin = win->position.ymin - TITLE_HEIGHT;
 	int ymax = win->position.ymin;
-	drawRectByCoord(dst, xmin, ymin, xmax - 2 * TITLE_HEIGHT, ymax,
-			barcolor);
+	
+	// Draw title bar background
+	drawRectByCoord(dst, xmin, ymin, xmax - 2 * TITLE_HEIGHT, ymax, barcolor);
+	
+	// Minimize button
 	drawRectByCoord(dst, xmax - 2 * TITLE_HEIGHT, ymin, xmax - TITLE_HEIGHT,
 			ymax, minimizeColor);
+	
+	// Close button
 	drawRectByCoord(dst, xmax - TITLE_HEIGHT, ymin, xmax, ymax, closeColor);
-	drawString(dst, xmin + 5, ymin + 3, win->title, iconColor);
+	
+	// Title text - white
+	drawString(dst, xmin + 8, ymin + 6, win->title, titleTextColor);
+	
+	// Icons - white
 	drawIcon(dst, xmax - 2 * TITLE_HEIGHT - 1, ymin - 1, 1, iconColor);
 	drawIcon(dst, xmax - TITLE_HEIGHT - 1, ymin - 1, 0, iconColor);
 }
@@ -508,11 +522,13 @@ void drawWindow(kernel_window *win) {
 	// directly flush the RGB array of window onto screen_buf
 	draw24ImagePart(screen_buf, win->window_buf, win->position.xmin,
 			win->position.ymin, width, height, 0, 0, width, height);
-	RGB color;
-	color.R = 0;
-	color.G = 0;
-	color.B = 0;
-	drawRectBorder(screen_buf, color, win->position.xmin,
+	
+	// Window border - subtle gray
+	RGB borderColor;
+	borderColor.R = 60;
+	borderColor.G = 68;
+	borderColor.B = 82;
+	drawRectBorder(screen_buf, borderColor, win->position.xmin,
 		       win->position.ymin, width, height);
 
 	if (win->hasTitleBar) {
@@ -527,8 +543,17 @@ void drawDesktopDock(struct RGB *dst) {
 
 	int p;
 	int windowCount = getWindowCount();
+	
+	// Start button - accent color
+	struct RGBA startBtnColor;
+	startBtnColor.R = 66;
+	startBtnColor.G = 135;
+	startBtnColor.B = 245;
+	startBtnColor.A = 255;
+	
 	drawRectByCoord(dst, 0, SCREEN_HEIGHT - DOCK_HEIGHT, START_ICON_WIDTH,
-			SCREEN_HEIGHT, titleBarColor);
+			SCREEN_HEIGHT, startBtnColor);
+	
 	if (windowCount > 0) {
 		int xStart = START_ICON_WIDTH + 5;
 		int barWidth = min((SCREEN_WIDTH - START_ICON_WIDTH -
@@ -550,9 +575,11 @@ void drawDesktopDock(struct RGB *dst) {
 			}
 		}
 	}
+	
+	// Show desktop button
 	drawRectByCoord(dst, SCREEN_WIDTH - SHOW_DESKTOP_ICON_WIDTH,
 			SCREEN_HEIGHT - DOCK_HEIGHT, SCREEN_WIDTH,
-			SCREEN_HEIGHT, titleBarColor);
+			SCREEN_HEIGHT, startBtnColor);
 	drawIcon(dst, START_ICON_WIDTH / 2 - 15,
 		 SCREEN_HEIGHT - DOCK_HEIGHT + 3, 2, iconColor);
 }
@@ -573,7 +600,6 @@ void updateScreen() {
 	drawDesktopDock(screen_buf);
 
 	// draw other windows in order
-	// switch uvm to allow access to the RGB array of those windows
 	int p;
 	for (p = windowlisthead; p != -1; p = windowlist[p].next) {
 		if (p != desktopId && windowlist[p].wnd.minimized == 0) {
@@ -588,8 +614,7 @@ void updateScreen() {
 		drawWindow(&popupwindow.wnd);
 	}
 
-	// switch back to the desktop process (because it is the only process
-	// that calls this function)
+	// switch back to the desktop process
 	if (myproc() == 0)
 		switchkvm();
 	else
@@ -761,7 +786,6 @@ int maximizeWindow(window_p window) {
 	return 0;
 }
 
-// doesn't seem to work...
 int turnoffScreen() {
 	acquire(&wmlock);
 

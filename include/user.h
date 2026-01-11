@@ -1,7 +1,7 @@
 #ifndef USER_H
 #define USER_H
 
-#include "types.h" // TAMBAHKAN INI: Agar uint, ushort, dll dikenali
+#include "types.h"
 
 struct stat;
 struct rtcdate;
@@ -45,18 +45,19 @@ int GUI_maximizeWindow(struct window *);
 int GUI_minimizeWindow(struct window *);
 int GUI_createPopupWindow(struct window *, int);
 int GUI_closePopupWindow(struct window *);
-int halt(void);	  // System call baru
-int reboot(void); // System call baru
+int halt(void);
+int reboot(void);
 
 // ulib.c
 int stat(const char *, struct stat *);
 char *strcpy(char *, const char *);
+char *strcat(char *, const char *);
 void *memmove(void *, const void *, int);
 char *strchr(const char *, char c);
 int strcmp(const char *, const char *);
 void printf(int, const char *, ...);
 char *gets(char *, int max);
-uint strlen(const char *); // Sekarang uint sudah aman
+uint strlen(const char *);
 void *memset(void *, int, uint);
 void *malloc(uint);
 void free(void *);
@@ -84,6 +85,7 @@ int addRectangleWidget(struct window *win, struct RGBA c,
 		       int h, int scrollable, Handler handler);
 int removeWidget(struct window *win, int index);
 int setWidgetHandler(struct window *win, int index, Handler handler);
+int findWidgetId(struct window *win, struct Widget *widget);
 
 // user_gui.c
 void fillRect(struct RGB *buf, int x, int y, int width, int height, int max_x,
