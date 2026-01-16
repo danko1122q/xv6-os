@@ -2,6 +2,8 @@
 
 Modified version of MIT xv6 (x86) with a custom graphical user interface and window manager.
 
+![image](docs/Screenshot.png)
+
 ## Overview
 This project transforms the traditional xv6 teaching OS into a graphical environment. It features a monolithic kernel with multi-processor support, a VGA-based window manager, and a set of graphical user applications.
 
