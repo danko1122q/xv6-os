@@ -5,7 +5,6 @@ B = build
 I = include
 S = scripts
 IMG = img
-
 OS_NAME = xv6OS
 
 # --- OBJECTS ---
@@ -24,18 +23,25 @@ OBJDUMP = objdump
 
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror \
          -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -nostdinc -I$(I)
+
 LDFLAGS = -m elf_i386
 
 # --- MAIN TARGETS ---
+# Default target: build everything
+make: all
+
+# Build and run
+makerun: all run
+
 all: setup icons $(IMG)/$(OS_NAME).img $(IMG)/fs.img
 
 setup:
 	@mkdir -p $(B)
 	@mkdir -p $(IMG)
 
-# OTOMATISASI: Menjalankan convert.py jika ada file .png di folder icon/ yang berubah
+# AUTOMATION: Run convert.py if any .png files in icon/ folder have changed
 icons: $(wildcard icon/*.png)
-	@echo "Otomatis mengonversi ikon PNG dari folder icon/..."
+	@echo "Automatically converting PNG icons from icon/ folder..."
 	@python3 convert.py
 
 $(IMG)/$(OS_NAME).img: $(B)/bootblock $(B)/kernel
@@ -112,10 +118,11 @@ QEMUOPTS = -drive file=$(IMG)/fs.img,index=1,media=disk,format=raw \
            -drive file=$(IMG)/$(OS_NAME).img,index=0,media=disk,format=raw \
            -smp 2 -m 512
 
-run: all
-	qemu-system-i386 -serial mon:stdio $(QEMUOPTS)
+# Run QEMU without rebuilding
+run:
+	@qemu-system-i386 -serial mon:stdio $(QEMUOPTS)
 
 clean:
 	rm -rf $(B) $(IMG)
 
-.PHONY: all clean qemu setup run icons
+.PHONY: all clean qemu setup run icons make makerun
