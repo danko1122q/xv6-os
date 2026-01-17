@@ -47,7 +47,7 @@ jobs:
         run: make clean
 
       - name: Build OS Images
-        run: make all
+        run: make -j$(nproc)
 
       - name: Verify Build Artifacts
         run: |
