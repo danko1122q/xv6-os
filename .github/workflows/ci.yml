@@ -20,8 +20,7 @@ jobs:
 
       - name: Run Clang-Format Style Check
         run: |
-          # Only scan .c files, ignoring headers and large data files
-          # This prevents build failures on non-logic files
+          # Hanya cek file .c, abaikan icons_data.c dan file .h
           find kernel user -name "*.c" | grep -v "icons_data.c" | xargs clang-format --dry-run --Werror
 
       - name: Set up Go
@@ -53,10 +52,10 @@ jobs:
       - name: Verify Build Artifacts
         run: |
           if [ -f "img/xv6OS.img" ] && [ -f "img/fs.img" ]; then
-            echo "Success: OS images generated."
+            echo "Build successful: Images generated."
             ls -lh img/
           else
-            echo "Error: Build artifacts missing."
+            echo "Build failed: Image files missing."
             exit 1
           fi
 

@@ -123,21 +123,23 @@ int dispatchMessage(msg_buf *buf, message *msg) {
 }
 
 int getMessage(msg_buf *buf, message *result) {
-    if (buf->cnt == 0) return 1; // Keluar lebih awal (Guard)
+	if (buf->cnt == 0)
+		return 1; // Keluar lebih awal (Guard)
 
-    acquire(&wmlock);
-    *result = buf->data[buf->front];
-    buf->front = (buf->front + 1) % MSG_BUF_SIZE; // Gunakan modulo agar lebih bersih
-    buf->cnt--;
-    release(&wmlock);
-    
-    return 0;
+	acquire(&wmlock);
+	*result = buf->data[buf->front];
+	buf->front = (buf->front + 1) %
+		     MSG_BUF_SIZE; // Gunakan modulo agar lebih bersih
+	buf->cnt--;
+	release(&wmlock);
+
+	return 0;
 }
 
 void wmInit() {
 	// Modern title bar - dark blue/gray
-    titleBarColor = (struct RGBA){.R = 45, .G = 52, .B = 64, .A = 255};
-    dockColor     = (struct RGBA){.R = 30, .G = 35, .B = 42, .A = 255};
+	titleBarColor = (struct RGBA){.R = 45, .G = 52, .B = 64, .A = 255};
+	dockColor = (struct RGBA){.R = 30, .G = 35, .B = 42, .A = 255};
 
 	// Modern dock - dark
 	dockColor.R = 30;
@@ -455,7 +457,8 @@ void wmHandleMessage(message *msg) {
 				dispatchMessage(
 					&windowlist[windowlisttail].wnd.msg_buf,
 					&newmsg);
-				break; // Tambahkan break agar tidak lanjut ke M_MOUSE_UP
+				break; // Tambahkan break agar tidak lanjut ke
+				       // M_MOUSE_UP
 			}
 		}
 	case M_MOUSE_UP:
@@ -672,13 +675,13 @@ int createWindow(window_p window, char *title) {
 
 	initMessageQueue(&windowlist[winId].wnd.msg_buf);
 
-// Pastikan selalu ada ruang untuk null-terminator '\0'
-int len = strlen(title);
-if (len >= MAX_TITLE_LEN) {
-    len = MAX_TITLE_LEN - 1; 
-}
-memset(windowlist[winId].wnd.title, 0, MAX_TITLE_LEN);
-memmove(windowlist[winId].wnd.title, title, len);
+	// Pastikan selalu ada ruang untuk null-terminator '\0'
+	int len = strlen(title);
+	if (len >= MAX_TITLE_LEN) {
+		len = MAX_TITLE_LEN - 1;
+	}
+	memset(windowlist[winId].wnd.title, 0, MAX_TITLE_LEN);
+	memmove(windowlist[winId].wnd.title, title, len);
 
 	release(&wmlock);
 
