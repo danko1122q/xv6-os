@@ -122,4 +122,11 @@ makerun: all run
 clean:
 	rm -rf $(B) $(IMG)
 
-.PHONY: all clean setup run icons makerun
+# --- FORMATTING ---
+# Run 'make format' manually to fix styling before git push
+format:
+	@echo "Formatting source code (.c files only)..."
+	@find $(K) $(U) -name "*.c" | grep -v "icons_data.c" | xargs clang-format -i
+	@echo "Formatting complete."
+
+.PHONY: all clean setup run icons makerun format
