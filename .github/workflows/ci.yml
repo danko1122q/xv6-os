@@ -1,0 +1,60 @@
+name: OS Build CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Mengambil kode dari repositori
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Setup Go untuk script sign.go dan vectors.go 
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    # 3. Setup Python untuk script convert.py (icons) 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    # 4. Instalasi dependensi untuk kompilasi silang (cross-compile) 32-bit
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib build-essential binutils
+
+    # 5. Membersihkan build lama untuk memastikan lingkungan bersih
+    - name: Clean Environment
+      [cite_start]run: make clean [cite: 1]
+
+    # 6. Menjalankan proses build utama sesuai Makefile
+    - name: Build OS Images
+      [cite_start]run: make all [cite: 1]
+
+    # 7. Verifikasi hasil build 
+    - name: Check Artifacts
+      run: |
+        if [ -f "img/xv6OS.img" ] && [ -f "img/fs.img" ]; then
+          echo "Build Success: Images found."
+          ls -lh img/
+        else
+          echo "Build Failed: Images not found."
+          exit 1
+        fi
+
+    # 8. (Opsional) Simpan hasil build agar bisa didownload
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: OS-Images
+        path: img/
