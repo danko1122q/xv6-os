@@ -43,6 +43,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-multilib build-essential binutils
 
+      - name: Generate Icon Data
+        run: |
+          # Jalankan script konversi untuk menghasilkan kernel/icons_data.c
+          python3 scripts/convert.py
+          # Pastikan folder build ada agar Makefile tidak error saat mencoba menulis .o
+          mkdir -p build
+
       - name: Clean Environment
         run: make clean
 
