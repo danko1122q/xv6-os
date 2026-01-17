@@ -49,7 +49,11 @@ static int clickedOnTitle, clickedOnContent, clickedOnPopup;
 
 struct spinlock wmlock;
 
-static struct { int x, y; } wm_mouse_pos, wm_last_mouse_pos;
+typedef struct {
+	int x, y;
+} mouse_pos_t;
+
+static mouse_pos_t wm_mouse_pos, wm_last_mouse_pos;
 
 #define MOUSE_SPEED_X 1
 #define MOUSE_SPEED_Y -1

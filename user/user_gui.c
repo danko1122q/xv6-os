@@ -1,6 +1,5 @@
 #include "stat.h"
 #include "types.h"
-#include "color.h"
 #include "character.h"
 #include "fcntl.h"
 #include "fs.h"
