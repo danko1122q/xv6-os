@@ -20,10 +20,10 @@ jobs:
 
       - name: Run Clang-Format Style Check
         run: |
-          # Only check .c files in kernel and user directories
-          # Exclude icons_data.c as it contains large data arrays that trigger errors
+          # Only scan .c files in kernel and user folders
+          # Specifically exclude icons_data.c to avoid false positives on data arrays
           find kernel user -name "*.c" | grep -v "icons_data.c" | xargs clang-format --dry-run --Werror
-        # This step ensures code follows the .clang-format rules before building
+        # This will enforce the rules defined in your .clang-format file
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -39,7 +39,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install Pillow
-          # Required by convert.py for processing icons
 
       - name: Install System Dependencies
         run: |
@@ -48,11 +47,9 @@ jobs:
 
       - name: Clean Environment
         run: make clean
-        # Cleans previous build artifacts defined in your Makefile
 
       - name: Build OS Images
         run: make all
-        # Compiles the kernel and user programs into .img files
 
       - name: Verify Build Artifacts
         run: |
@@ -60,7 +57,7 @@ jobs:
             echo "Success: OS images generated."
             ls -lh img/
           else
-            echo "Error: Required image files are missing."
+            echo "Error: Image files missing."
             exit 1
           fi
 

@@ -11,9 +11,10 @@ AlignAfterOpenBracket: Align
 PointerAlignment: Right
 SpaceAfterCStyleCast: false
 SpaceBeforeParens: ControlStatements
-# Mengizinkan format singkat agar tidak error di window_manager.c
+# Izinkan format singkat untuk struct satu baris agar tidak error
 AllowShortBlocksOnASingleLine: true
 AllowShortFunctionsOnASingleLine: All
-SpacesInContainerLiterals: true
-# Memastikan spasi komentar konsisten
+# Menangani spasi di dalam kurung kurawal agar sesuai standar LLVM
+Cpp11BracedListStyle: true
+# Pastikan ada spasi sebelum komentar di akhir baris
 SpacesBeforeTrailingComments: 1
