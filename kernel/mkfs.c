@@ -6,13 +6,12 @@
 #include <unistd.h>
 #include <libgen.h>
 
-#define stat xv6_stat // Prevents conflict between host OS 'stat' and xv6 'stat'
+#define stat xv6_stat
 #include "../include/fs.h"
 #include "../include/param.h"
 #include "../include/stat.h"
 #include "../include/types.h"
 
-// Basic compile-time check to ensure logic holds
 #ifndef static_assert
 #define static_assert(a, b)                                                    \
 	do {                                                                   \
@@ -22,27 +21,20 @@
 	} while (0)
 #endif
 
-#define NINODES 200 // Total capacity of the inode table
+#define NINODES 200
 
-/**
- * Disk Layout Visualization:
- * [ boot block | superblock | log | inode blocks | free bit map | data blocks ]
- */
+int nbitmap = FSSIZE / (BSIZE * 8) + 1;
+int ninodeblocks = NINODES / IPB + 1;
+int nlog = LOGSIZE;
+int nmeta;
+int nblocks;
 
-int nbitmap =
-	FSSIZE / (BSIZE * 8) + 1;     // Blocks needed for the free-block bitmap
-int ninodeblocks = NINODES / IPB + 1; // Blocks needed to store 200 inodes
-int nlog = LOGSIZE; // Number of blocks for the transaction log
-int nmeta;	    // Sum of all metadata blocks
-int nblocks;	    // Remaining blocks available for raw data
+int fsfd;
+struct superblock sb;
+char zeroes[BSIZE];
+uint freeinode = 1;
+uint freeblock;
 
-int fsfd;	      // File descriptor for the resulting disk image (fs.img)
-struct superblock sb; // The "header" of the file system
-char zeroes[BSIZE];   // Used to initialize the disk with empty space
-uint freeinode = 1;   // Pointer to the next available inode index
-uint freeblock;	      // Pointer to the next available data block index
-
-// Function prototypes for low-level block/inode manipulation
 void balloc(int);
 void wsect(uint, void *);
 void winode(uint, struct dinode *);
@@ -51,9 +43,6 @@ void rsect(uint sec, void *buf);
 uint ialloc(ushort type);
 void iappend(uint inum, void *p, int n);
 
-// --- Byte Order Utilities ---
-// These ensure the disk image is Little-Endian, even if created on a Big-Endian
-// host.
 ushort xshort(ushort x) {
 	ushort y;
 	uchar *a = (uchar *)&y;
@@ -86,22 +75,18 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	// Sanity checks: Ensure structures fit perfectly into disk blocks
 	assert((BSIZE % sizeof(struct dinode)) == 0);
 	assert((BSIZE % sizeof(struct dirent)) == 0);
 
-	// Create/Open the disk image file
 	fsfd = open(argv[1], O_RDWR | O_CREAT | O_TRUNC, 0666);
 	if (fsfd < 0) {
 		perror(argv[1]);
 		exit(1);
 	}
 
-	// Calculate layout geometry
 	nmeta = 2 + nlog + ninodeblocks + nbitmap;
 	nblocks = FSSIZE - nmeta;
 
-	// Initialize Superblock fields
 	sb.size = xint(FSSIZE);
 	sb.nblocks = xint(nblocks);
 	sb.ninodes = xint(NINODES);
@@ -114,41 +99,32 @@ int main(int argc, char *argv[]) {
 	       "blocks %u) blocks %d total %d\n",
 	       nmeta, nlog, ninodeblocks, nbitmap, nblocks, FSSIZE);
 
-	freeblock = nmeta; // Data blocks start immediately after metadata
+	freeblock = nmeta;
 
-	// Wipe the entire image with zeros
 	for (i = 0; i < FSSIZE; i++)
 		wsect(i, zeroes);
 
-	// Write the Superblock into sector 1 (sector 0 is the boot block)
 	memset(buf, 0, sizeof(buf));
 	memmove(buf, &sb, sizeof(sb));
 	wsect(1, buf);
 
-	// Create the Root Directory inode
 	rootino = ialloc(T_DIR);
 	assert(rootino == ROOTINO);
 
-	// Add "." (current directory) entry to root
 	bzero(&de, sizeof(de));
 	de.inum = xshort(rootino);
 	strcpy(de.name, ".");
 	iappend(rootino, &de, sizeof(de));
 
-	// Add ".." (parent directory) entry to root
 	bzero(&de, sizeof(de));
 	de.inum = xshort(rootino);
 	strcpy(de.name, "..");
 	iappend(rootino, &de, sizeof(de));
 
-	// --- Inject Files ---
-	// Loop through files passed via command line (like rm, ls, cat)
 	for (i = 2; i < argc; i++) {
 		char *filepath = argv[i];
 		char *filename = basename(strdup(filepath));
 
-		// Remove leading underscore (used by build system to
-		// distinguish binaries)
 		if (filename[0] == '_')
 			++filename;
 
@@ -157,37 +133,30 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 
-		// Allocate a new inode for the file
 		inum = ialloc(T_FILE);
 
-		// Add the file entry to the root directory
 		bzero(&de, sizeof(de));
 		de.inum = xshort(inum);
 		strncpy(de.name, filename, DIRSIZ);
 		iappend(rootino, &de, sizeof(de));
 
-		// Read content from host file and append to the virtual disk
-		// file
 		while ((cc = read(fd, buf, sizeof(buf))) > 0)
 			iappend(inum, buf, cc);
 
 		close(fd);
 	}
 
-	// Standardize the root directory size to block boundaries
 	rinode(rootino, &din);
 	off = xint(din.size);
 	off = ((off / BSIZE) + 1) * BSIZE;
 	din.size = xint(off);
 	winode(rootino, &din);
 
-	// Mark all used blocks in the bitmap
 	balloc(freeblock);
 
 	exit(0);
 }
 
-// Write a block/sector to the disk image
 void wsect(uint sec, void *buf) {
 	if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE) {
 		perror("lseek");
@@ -199,20 +168,18 @@ void wsect(uint sec, void *buf) {
 	}
 }
 
-// Write an inode to the inode table on disk
 void winode(uint inum, struct dinode *ip) {
 	char buf[BSIZE];
 	uint bn;
 	struct dinode *dip;
 
-	bn = IBLOCK(inum, sb); // Find which block contains this inode
+	bn = IBLOCK(inum, sb);
 	rsect(bn, buf);
 	dip = ((struct dinode *)buf) + (inum % IPB);
 	*dip = *ip;
 	wsect(bn, buf);
 }
 
-// Read an inode from the inode table on disk
 void rinode(uint inum, struct dinode *ip) {
 	char buf[BSIZE];
 	uint bn;
@@ -224,7 +191,6 @@ void rinode(uint inum, struct dinode *ip) {
 	*ip = *dip;
 }
 
-// Read a sector from the disk image
 void rsect(uint sec, void *buf) {
 	if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE) {
 		perror("lseek");
@@ -236,7 +202,6 @@ void rsect(uint sec, void *buf) {
 	}
 }
 
-// Initialize and allocate a new inode
 uint ialloc(ushort type) {
 	uint inum = freeinode++;
 	struct dinode din;
@@ -249,7 +214,6 @@ uint ialloc(ushort type) {
 	return inum;
 }
 
-// Update the free-block bitmap block
 void balloc(int used) {
 	uchar buf[BSIZE];
 	int i;
@@ -258,38 +222,34 @@ void balloc(int used) {
 	assert(used < BSIZE * 8);
 	bzero(buf, BSIZE);
 	for (i = 0; i < used; i++) {
-		buf[i / 8] = buf[i / 8] |
-			     (0x1 << (i % 8)); // Set bits for used blocks
+		buf[i / 8] = buf[i / 8] | (0x1 << (i % 8));
 	}
 	wsect(sb.bmapstart, buf);
 }
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-// Append data to an existing inode (handles direct and indirect blocks)
 void iappend(uint inum, void *xp, int n) {
 	char *p = (char *)xp;
 	uint fbn, off, n1;
 	struct dinode din;
 	char buf[BSIZE];
 	uint indirect[NINDIRECT];
+	uint dindirect[NINDIRECT];
 	uint x;
 
 	rinode(inum, &din);
 	off = xint(din.size);
 	while (n > 0) {
-		fbn = off / BSIZE; // File block number
+		fbn = off / BSIZE;
 		assert(fbn < MAXFILE);
 
-		// Case 1: Direct Blocks (NDIRECT = 12)
 		if (fbn < NDIRECT) {
 			if (xint(din.addrs[fbn]) == 0) {
 				din.addrs[fbn] = xint(freeblock++);
 			}
 			x = xint(din.addrs[fbn]);
-		}
-		// Case 2: Indirect Block (Pointer to a block of pointers)
-		else {
+		} else if (fbn < NDIRECT + NINDIRECT) {
 			if (xint(din.addrs[NDIRECT]) == 0) {
 				din.addrs[NDIRECT] = xint(freeblock++);
 			}
@@ -300,9 +260,27 @@ void iappend(uint inum, void *xp, int n) {
 				      (char *)indirect);
 			}
 			x = xint(indirect[fbn - NDIRECT]);
+		} else {
+			fbn -= (NDIRECT + NINDIRECT);
+			if (xint(din.addrs[NDIRECT + 1]) == 0) {
+				din.addrs[NDIRECT + 1] = xint(freeblock++);
+			}
+			rsect(xint(din.addrs[NDIRECT + 1]), (char *)indirect);
+			if (indirect[fbn / NINDIRECT] == 0) {
+				indirect[fbn / NINDIRECT] = xint(freeblock++);
+				wsect(xint(din.addrs[NDIRECT + 1]),
+				      (char *)indirect);
+			}
+			rsect(xint(indirect[fbn / NINDIRECT]),
+			      (char *)dindirect);
+			if (dindirect[fbn % NINDIRECT] == 0) {
+				dindirect[fbn % NINDIRECT] = xint(freeblock++);
+				wsect(xint(indirect[fbn / NINDIRECT]),
+				      (char *)dindirect);
+			}
+			x = xint(dindirect[fbn % NINDIRECT]);
 		}
 
-		// Copy logic
 		n1 = min(n, (fbn + 1) * BSIZE - off);
 		rsect(x, buf);
 		bcopy(p, buf + off - (fbn * BSIZE), n1);
@@ -311,6 +289,6 @@ void iappend(uint inum, void *xp, int n) {
 		off += n1;
 		p += n1;
 	}
-	din.size = xint(off); // Update file size
+	din.size = xint(off);
 	winode(inum, &din);
 }
