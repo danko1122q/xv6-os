@@ -1,21 +1,22 @@
 #ifndef PARAM_H
 #define PARAM_H
 
-#define NPROC 64		  // maximum number of processes
-#define KSTACKSIZE 4096		  // size of per-process kernel stack
-#define NCPU 8			  // maximum number of CPUs
-#define NOFILE 16		  // open files per process
-#define NFILE 100		  // open files per system
-#define NINODE 50		  // maximum number of active i-nodes
-#define NDEV 10			  // maximum major device number
-#define ROOTDEV 1		  // device number of file system root disk
-#define MAXARG 32		  // max exec arguments
-#define MAXOPBLOCKS 10		  // max # of blocks any FS op writes
-#define LOGSIZE (MAXOPBLOCKS * 3) // max data blocks in on-disk log
-#define NBUF (MAXOPBLOCKS * 3)	  // size of disk block cache
-#define FSSIZE 1000		  // size of file system in blocks
+#define NPROC        64        // Maximum number of processes
+#define KSTACKSIZE   4096      // Size of per-process kernel stack
+#define NCPU         8         // Maximum number of CPUs
+#define NOFILE       64        // Open files per process (increased for game assets)
+#define NFILE        100       // Open files per system
+#define NINODE       100       // Maximum number of active i-nodes (increased for icons/WADs)
+#define NDEV         10        // Maximum major device number
+#define ROOTDEV      1         // Device number of file system root disk
+#define MAXARG       32        // Max exec arguments
+#define MAXOPBLOCKS  10        // Max # of blocks any FS op writes
+#define LOGSIZE      (MAXOPBLOCKS * 3) // Max data blocks in on-disk log
+#define NBUF         (MAXOPBLOCKS * 3) // Size of disk block cache
 
-/* TAMBAHKAN BARIS INI */
-#define BSIZE 2048 /* Ubah dari 512 ke 2048 */
+// File System Configuration for 500 MB Disk
+// Calculation: (500 * 1024 * 1024) / 2048 (BSIZE) = 256,000 blocks
+#define FSSIZE       256000    
+#define BSIZE        2048      // Block size in bytes
 
 #endif
