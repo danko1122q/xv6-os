@@ -19,7 +19,8 @@
 
 // Struktur untuk menyimpan data aplikasi desktop
 typedef struct {
-	char name[32];
+	char name[32]; // Nama yang ditampilkan
+	char exec[32]; // Nama file executable
 	int iconId;
 	int x, y;
 	int isActive;
@@ -141,7 +142,7 @@ int findAppAtPosition(int mouseX, int mouseY) {
 }
 
 // Fungsi untuk menambah aplikasi baru ke desktop
-int addDesktopApp(char *name, int iconId, int x, int y) {
+int addDesktopApp(char *name, char *exec, int iconId, int x, int y) {
 	int idx = -1;
 	for (int i = 0; i < MAX_APPS; i++) {
 		if (!apps[i].isActive) {
@@ -154,6 +155,7 @@ int addDesktopApp(char *name, int iconId, int x, int y) {
 		return -1;
 
 	strcpy(apps[idx].name, name);
+	strcpy(apps[idx].exec, exec);
 	apps[idx].iconId = iconId;
 	apps[idx].x = x;
 	apps[idx].y = y;
@@ -198,8 +200,10 @@ void customUpdateWindow() {
 					    DOUBLE_CLICK_TIME) {
 					// DOUBLE CLICK - Jalankan program
 					if (fork() == 0) {
+						// Gunakan nama executable,
+						// bukan display name
 						char *argv2[] = {
-							apps[appIdx].name, 0};
+							apps[appIdx].exec, 0};
 						exec(argv2[0], argv2);
 						exit();
 					}
@@ -439,11 +443,15 @@ int main(int argc, char *argv[]) {
 		apps[i].isActive = 0;
 	}
 
-	// Tambahkan aplikasi ke desktop dengan spacing yang lebih baik
-	addDesktopApp("terminal", 0, 20, 20);
-	addDesktopApp("editor", 1, 20, 20 + APP_TOTAL_HEIGHT + 10);
-	addDesktopApp("explorer", 2, 20, 20 + (APP_TOTAL_HEIGHT + 10) * 2);
-	addDesktopApp("floppybird", 3, 20, 20 + (APP_TOTAL_HEIGHT + 10) * 3);
+	// Tambahkan aplikasi ke desktop dengan nama tampilan dan nama
+	// executable Format: addDesktopApp(display_name, executable_name,
+	// iconId, x, y)
+	addDesktopApp("Terminal", "terminal", 0, 20, 20);
+	addDesktopApp("Editor", "editor", 1, 20, 20 + APP_TOTAL_HEIGHT + 10);
+	addDesktopApp("Explorer", "explorer", 2, 20,
+		      20 + (APP_TOTAL_HEIGHT + 10) * 2);
+	addDesktopApp("Floppy Bird", "floppybird", 3, 20,
+		      20 + (APP_TOTAL_HEIGHT + 10) * 3);
 
 	// Render apps pertama kali
 	renderAllApps();
