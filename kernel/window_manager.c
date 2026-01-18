@@ -13,6 +13,7 @@
 
 #include "window_manager.h"
 
+
 int min(int x, int y) { return x < y ? x : y; }
 int max(int x, int y) { return x > y ? x : y; }
 int clamp(int x, int l, int r) { return min(r, max(l, x)); }

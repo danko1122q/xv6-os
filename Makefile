@@ -52,7 +52,7 @@ $(B)/bootblock: $(K)/bootasm.S $(K)/bootmain.c $(S)/sign.go
 	go run $(S)/sign.go $(B)/bootblock
 
 $(B)/kernel: $(OBJS) $(B)/entry.o $(B)/entryother $(B)/initcode $(B)/vectors.o $(K)/kernel.ld
-	cd $(B) && $(LD) $(LDFLAGS) -T ../$(K)/kernel.ld -o kernel ../$(B)/entry.o ../$(B)/vectors.o $(OBJS_NAMES) -b binary initcode entryother
+	cd $(B) && $(LD) $(LDFLAGS) -T ../$(K)/kernel.ld -o kernel entry.o vectors.o $(OBJS_NAMES) -b binary initcode entryother
 	$(OBJDUMP) -S $(B)/kernel > $(B)/kernel.asm
 	$(OBJDUMP) -t $(B)/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(B)/kernel.sym
 
