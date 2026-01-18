@@ -10,7 +10,7 @@ This project transforms the traditional xv6 teaching OS into a graphical environ
 *   **Monolithic Kernel**: Unix-inspired design with preemptive multitasking.
 *   **GUI Subsystem**: Kernel-level window manager and drawing primitives.
 *   **Mouse Support**: Integrated PS/2 mouse driver.
-*   **Userland Apps**: Shell, File Explorer, Text Editor, and Games (Floppy Bird).
+*   **Userland Apps**: terminal, File Explorer, Text Editor, and Games (Floppy Bird).
 *   **Icon System**: Automated PNG-to-C array conversion for UI assets.
 
 ## Toolchain & Requirements
