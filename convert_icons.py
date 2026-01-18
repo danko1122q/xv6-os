@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Script untuk mengkonversi icon PNG aplikasi desktop menjadi array C
-Icon akan disimpan di kernel/app_icons_data.c
+Script to convert desktop application PNG icons to C arrays
+Icons will be saved in kernel/app_icons_data.c
 """
 import os
 from PIL import Image
 
-# Konfigurasi
-APP_ICON_SIZE = 48  # Sesuai dengan ICON_SIZE di desktop.c
+# Configuration
+APP_ICON_SIZE = 48  # Matches ICON_SIZE in desktop.c
 ICON_DIR = "app_icons"
 OUTPUT_FILE = "kernel/app_icons_data.c"
 HEADER_FILE = "include/app_icons.h"
 TRANSPARENT_MARKER = "0xFF000000"
 
-# Daftar aplikasi dan file icon mereka
+# List of applications and their icon files
 APP_ICONS = {
     "TERMINAL": "terminal.png",
     "EDITOR": "editor.png", 
@@ -22,12 +22,12 @@ APP_ICONS = {
 }
 
 def convert_app_icons():
-    """Konversi semua icon aplikasi menjadi array C"""
+    """Convert all application icons to C arrays"""
     
-    # Buat direktori app_icons jika belum ada
+    # Create app_icons directory if it doesn't exist
     if not os.path.exists(ICON_DIR):
         os.makedirs(ICON_DIR)
-        print(f"Direktori {ICON_DIR} dibuat. Silakan tambahkan file icon PNG.")
+        print(f"Directory {ICON_DIR} created. Please add PNG icon files.")
         return False
     
     # Generate header file
@@ -37,7 +37,7 @@ def convert_app_icons():
         f.write(f"#define APP_ICON_SIZE {APP_ICON_SIZE}\n")
         f.write(f"#define APP_ICON_COUNT {len(APP_ICONS)}\n\n")
         
-        # Enum untuk icon IDs
+        # Enum for icon IDs
         f.write("enum {\n")
         for i, name in enumerate(APP_ICONS.keys()):
             f.write(f"    APP_ICON_{name} = {i},\n")
@@ -46,9 +46,7 @@ def convert_app_icons():
         f.write(f"extern unsigned int app_icons_data[APP_ICON_COUNT][APP_ICON_SIZE * APP_ICON_SIZE];\n\n")
         f.write("#endif\n")
     
-    print(f"✓ Header file: {HEADER_FILE}")
-    
-    # Generate C file dengan data icon
+    # Generate C file with icon data
     with open(OUTPUT_FILE, "w") as f:
         f.write('#include "app_icons.h"\n\n')
         f.write(f'unsigned int app_icons_data[APP_ICON_COUNT][APP_ICON_SIZE * APP_ICON_SIZE] = {{\n')
@@ -56,22 +54,22 @@ def convert_app_icons():
         for app_name, filename in APP_ICONS.items():
             icon_path = os.path.join(ICON_DIR, filename)
             
-            # Ukuran icon sebenarnya (lebih kecil dari canvas 48x48)
-            ICON_CONTENT_SIZE = 32  # Icon akan 32x32, dengan padding 8px di setiap sisi
+            # Actual icon size (smaller than 48x48 canvas)
+            ICON_CONTENT_SIZE = 32  # Icon will be 32x32, with 8px padding on each side
             
-            # Skip jika file tidak ada
+            # Skip if file doesn't exist
             if not os.path.exists(icon_path):
-                print(f"✗ Error: {filename} tidak ditemukan, skip...")
+                print(f"Error: {filename} not found, skipping...")
                 continue
             
-            # Load dan resize icon ke ukuran content
+            # Load and resize icon to content size
             img_original = Image.open(icon_path).convert("RGBA")
             img_content = img_original.resize((ICON_CONTENT_SIZE, ICON_CONTENT_SIZE), Image.Resampling.LANCZOS)
             
-            # Buat canvas transparan 48x48
+            # Create transparent 48x48 canvas
             img = Image.new("RGBA", (APP_ICON_SIZE, APP_ICON_SIZE), (0, 0, 0, 0))
             
-            # Paste icon di tengah canvas (offset 8px dari setiap sisi)
+            # Paste icon in center of canvas (8px offset from each side)
             offset = (APP_ICON_SIZE - ICON_CONTENT_SIZE) // 2
             img.paste(img_content, (offset, offset))
             
@@ -79,16 +77,16 @@ def convert_app_icons():
             
             f.write(f'    [APP_ICON_{app_name}] = {{ // {filename}\n        ')
             
-            # Konversi pixel ke format RGBA
+            # Convert pixels to RGBA format
             for y in range(APP_ICON_SIZE):
                 for x in range(APP_ICON_SIZE):
                     r, g, b, a = pixels[x, y]
                     
-                    # Gunakan threshold alpha untuk transparansi
+                    # Use alpha threshold for transparency
                     if a < 128:
                         f.write(f"{TRANSPARENT_MARKER}, ")
                     else:
-                        # Format: 0x00RRGGBB (alpha channel diabaikan, handled terpisah)
+                        # Format: 0x00RRGGBB (alpha channel ignored, handled separately)
                         f.write(f"0x00{r:02X}{g:02X}{b:02X}, ")
                 
                 if y < APP_ICON_SIZE - 1:
@@ -98,16 +96,8 @@ def convert_app_icons():
         
         f.write('};\n')
     
-    print(f"✓ Data file: {OUTPUT_FILE}")
-    print(f"\n✓ Konversi selesai! {len(APP_ICONS)} icon aplikasi berhasil dikonversi.")
+    print(f"Converted {len(APP_ICONS)} icons successfully.")
     return True
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Konversi Icon Aplikasi Desktop ke Array C")
-    print("=" * 60)
     convert_app_icons()
-    print("\nCara penggunaan:")
-    print("1. Letakkan file PNG icon (48x48 px) di folder 'app_icons/'")
-    print("2. Jalankan: python3 convert_icons.py")
-    print("3. Compile ulang dengan: make clean && make")
