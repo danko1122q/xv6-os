@@ -3,6 +3,7 @@ build/
 fs.img
 xv6OS.img
 icons_data.c
+app_icons_data.c
 *.o
 *.d
 *.asm
@@ -19,3 +20,9 @@ entryother
 .idea/
 
 mkfs
+
+# Generated icon files
+include/app_icons.h
+kernel/app_icons_data.c
+include/character.h
+include/character.c

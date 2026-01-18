@@ -12,7 +12,7 @@ OBJS_NAMES = bio.o character.o console.o exec.o file.o fs.o ide.o ioapic.o kallo
 	     kbd.o lapic.o log.o main.o mp.o picirq.o pipe.o proc.o \
 	     sleeplock.o spinlock.o string.o swtch.o syscall.o sysfile.o \
 	     sysproc.o trapasm.o trap.o uart.o vm.o gui.o mouse.o msg.o \
-	     window_manager.o icons_data.o
+	     window_manager.o icons_data.o app_icons_data.o
 
 OBJS = $(addprefix $(B)/, $(OBJS_NAMES))
 
@@ -28,15 +28,20 @@ CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb 
 LDFLAGS = -m elf_i386
 
 # --- MAIN TARGETS ---
-all: setup icons $(IMG)/$(OS_NAME).img $(IMG)/fs.img
+all: setup icons app_icons $(IMG)/$(OS_NAME).img $(IMG)/fs.img
 
 setup:
 	@mkdir -p $(B)
 	@mkdir -p $(IMG)
+	@mkdir -p app_icons
 
 icons: $(wildcard icon/*.png)
-	@echo "Automatically converting PNG icons..."
+	@echo "Converting window icons..."
 	@python3 convert.py
+
+app_icons: $(wildcard app_icons/*.png)
+	@echo "Converting app desktop icons..."
+	@python3 convert_icons.py
 
 $(IMG)/$(OS_NAME).img: $(B)/bootblock $(B)/kernel
 	@dd if=/dev/zero of=$(IMG)/$(OS_NAME).img count=10000 status=none
@@ -82,7 +87,7 @@ $(B)/entryother: $(K)/entryother.S
 	$(OBJCOPY) -S -O binary -j .text $(B)/bootblockother.o $(B)/entryother
 
 # --- USER LAND ---
-ULIB = $(addprefix $(B)/, ulib.o usys.o printf.o umalloc.o user_gui.o user_window.o user_handler.o icons_data.o character.o)
+ULIB = $(addprefix $(B)/, ulib.o usys.o printf.o umalloc.o user_gui.o user_window.o user_handler.o icons_data.o app_icons_data.o character.o)
 
 $(B)/_%: $(B)/%.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
@@ -129,7 +134,7 @@ clean:
 # --- FORMATTING ---
 format:
 	@echo "Formatting source code"
-	@find $(K) $(U) -name "*.c" | grep -v "icons_data.c" | xargs clang-format -i
+	@find $(K) $(U) -name "*.c" | grep -v "icons_data.c" | grep -v "app_icons_data.c" | xargs clang-format -i
 	@echo "Formatting complete."
 
-.PHONY: all clean setup run icons makerun format
+.PHONY: all clean setup run icons app_icons makerun format
