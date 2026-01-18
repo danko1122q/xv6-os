@@ -55,35 +55,28 @@ void fillRect(RGB *buf, int x, int y, int width, int height, int max_x,
 	}
 }
 
+
 int drawCharacter(window *win, int x, int y, char ch, RGBA color) {
-	int i, j;
-	RGB *t;
-	int ord = ch - 0x20;
-	if (ord < 0 || ord >= (CHARACTER_NUMBER - 1)) {
-		return -1;
-	}
-	for (i = 0; i < CHARACTER_HEIGHT; i++) {
-		if (y + i > win->height) {
-			break;
-		}
-		if (y + i < 0) {
-			continue;
-		}
-		for (j = 0; j < CHARACTER_WIDTH; j++) {
-			if (character[ord][i][j] == 1) {
-				if (x + j > win->width) {
-					break;
-				}
-				if (x + j < 0) {
-					continue;
-				}
-				t = win->window_buf + (y + i) * win->width + x +
-				    j;
-				drawPointAlpha(t, color);
-			}
-		}
-	}
-	return CHARACTER_WIDTH;
+    int i, j;
+    RGB *t;
+    int ord = ch - 0x20;
+    if (ord < 0 || ord >= (CHARACTER_NUMBER - 1)) {
+        return -1;
+    }
+    for (i = 0; i < CHARACTER_HEIGHT; i++) {
+        if (y + i >= win->height || y + i < 0) continue;
+        
+        for (j = 0; j < CHARACTER_WIDTH; j++) {
+            // Jika bitmap bernilai 1, gambar pixel tersebut
+            if (character[ord][i][j] == 1) {
+                if (x + j >= win->width || x + j < 0) continue;
+                
+                t = win->window_buf + (y + i) * win->width + (x + j);
+                drawPointAlpha(t, color);
+            }
+        }
+    }
+    return CHARACTER_WIDTH;
 }
 
 void drawString(window *win, char *str, RGBA color, int x, int y, int width,

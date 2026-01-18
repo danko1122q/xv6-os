@@ -18,8 +18,6 @@
 #define KEY_INS 0xE8
 #define KEY_DEL 0xE9
 
-#define CHARACTER_WIDTH 9
-#define CHARACTER_HEIGHT 18
 
 struct Widget;
 // @para: window widget_index message

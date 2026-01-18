@@ -1,5 +1,6 @@
 #include "types.h"
 #include "user.h"
+#include "character.h"
 #include "user_window.h"
 
 void emptyHandler(Widget *w, message *msg) { return; }

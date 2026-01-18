@@ -1,3 +1,4 @@
+#include "character.h"
 #include "fcntl.h"
 #include "gui.h"
 #include "memlayout.h"

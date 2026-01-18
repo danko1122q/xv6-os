@@ -1,3 +1,4 @@
+#include "character.h"
 #include "user_window.h"
 #include "fcntl.h"
 #include "fs.h"

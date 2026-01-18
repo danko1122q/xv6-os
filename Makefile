@@ -8,7 +8,7 @@ IMG = img
 OS_NAME = xv6OS
 
 # --- OBJECTS ---
-OBJS_NAMES = bio.o console.o exec.o file.o fs.o ide.o ioapic.o kalloc.o \
+OBJS_NAMES = bio.o character.o console.o exec.o file.o fs.o ide.o ioapic.o kalloc.o \
 	     kbd.o lapic.o log.o main.o mp.o picirq.o pipe.o proc.o \
 	     sleeplock.o spinlock.o string.o swtch.o syscall.o sysfile.o \
 	     sysproc.o trapasm.o trap.o uart.o vm.o gui.o mouse.o msg.o \
@@ -59,6 +59,10 @@ $(B)/kernel: $(OBJS) $(B)/entry.o $(B)/entryother $(B)/initcode $(B)/vectors.o $
 $(B)/%.o: $(K)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Rule khusus untuk character.c di folder include
+$(B)/character.o: $(I)/character.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(B)/%.o: $(K)/%.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -78,7 +82,7 @@ $(B)/entryother: $(K)/entryother.S
 	$(OBJCOPY) -S -O binary -j .text $(B)/bootblockother.o $(B)/entryother
 
 # --- USER LAND ---
-ULIB = $(addprefix $(B)/, ulib.o usys.o printf.o umalloc.o user_gui.o user_window.o user_handler.o icons_data.o)
+ULIB = $(addprefix $(B)/, ulib.o usys.o printf.o umalloc.o user_gui.o user_window.o user_handler.o icons_data.o character.o)
 
 $(B)/_%: $(B)/%.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
@@ -123,7 +127,6 @@ clean:
 	rm -rf $(B) $(IMG)
 
 # --- FORMATTING ---
-# Run 'make format' manually to fix styling before git push
 format:
 	@echo "Formatting source code (.c files only)..."
 	@find $(K) $(U) -name "*.c" | grep -v "icons_data.c" | xargs clang-format -i

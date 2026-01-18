@@ -1,12 +1,21 @@
 #include "fcntl.h"
+#include "character.h"
 #include "gui.h"
+#include "character.h"
 #include "memlayout.h"
+#include "character.h"
 #include "msg.h"
+#include "character.h"
 #include "types.h"
+#include "character.h"
 #include "user.h"
+#include "character.h"
 #include "user_gui.h"
+#include "character.h"
 #include "user_handler.h"
+#include "character.h"
 #include "user_window.h"
+#include "character.h"
 
 // Constants
 #define MAX_FILENAME_LEN 40
