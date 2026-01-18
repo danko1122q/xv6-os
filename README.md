@@ -37,7 +37,7 @@ The `Makefile` handles the entire toolchain process.
 ### Compilation
 Build the kernel, userland, and disk images:
 ```bash
-make all
+make -j$(nproc)
 ```
 
 ### Running in QEMU
