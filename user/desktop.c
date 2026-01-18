@@ -1,4 +1,4 @@
-#include "app_icons.h"  // Tambahkan include ini
+#include "app_icons.h" // Tambahkan include ini
 #include "fcntl.h"
 #include "gui.h"
 #include "memlayout.h"
@@ -55,29 +55,29 @@ void drawAppIcon(int x, int y, int iconId) {
 		iconColor.G = 128;
 		iconColor.B = 128;
 		iconColor.A = 255;
-		
+
 		drawFillRect(&desktop, iconColor, x, y, ICON_SIZE, ICON_SIZE);
 		return;
 	}
-	
+
 	// Render icon dari array app_icons_data
 	for (int iy = 0; iy < APP_ICON_SIZE; iy++) {
 		for (int ix = 0; ix < APP_ICON_SIZE; ix++) {
 			int idx = iy * APP_ICON_SIZE + ix;
 			unsigned int pixel = app_icons_data[iconId][idx];
-			
+
 			// Skip pixel transparan (marker 0xFF000000)
 			if (pixel == 0xFF000000) {
 				continue;
 			}
-			
+
 			// Extract RGB dari pixel (format: 0x00RRGGBB)
 			RGBA color;
 			color.R = (pixel >> 16) & 0xFF;
 			color.G = (pixel >> 8) & 0xFF;
 			color.B = pixel & 0xFF;
 			color.A = 255;
-			
+
 			// Gambar pixel di posisi yang tepat
 			drawFillRect(&desktop, color, x + ix, y + iy, 1, 1);
 		}
@@ -449,9 +449,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Tambahkan aplikasi dengan icon PNG custom
-	// Format: addDesktopApp(display_name, executable_name, APP_ICON_xxx, x, y)
+	// Format: addDesktopApp(display_name, executable_name, APP_ICON_xxx, x,
+	// y)
 	addDesktopApp("Terminal", "terminal", APP_ICON_TERMINAL, 20, 20);
-	addDesktopApp("Editor", "editor", APP_ICON_EDITOR, 20, 20 + APP_TOTAL_HEIGHT + 10);
+	addDesktopApp("Editor", "editor", APP_ICON_EDITOR, 20,
+		      20 + APP_TOTAL_HEIGHT + 10);
 	addDesktopApp("Explorer", "explorer", APP_ICON_EXPLORER, 20,
 		      20 + (APP_TOTAL_HEIGHT + 10) * 2);
 	addDesktopApp("Floppy Bird", "floppybird", APP_ICON_FLOPPYBIRD, 20,
