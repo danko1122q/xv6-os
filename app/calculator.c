@@ -93,8 +93,9 @@ double stringToDouble(char *str) {
 void doubleToString(double value, char *buffer) {
 	int intPart = (int)value;
 	double fracPart = value - intPart;
-	
-	if (fracPart < 0) fracPart = -fracPart;
+
+	if (fracPart < 0)
+		fracPart = -fracPart;
 
 	// Handle negative
 	int pos = 0;
@@ -106,9 +107,10 @@ void doubleToString(double value, char *buffer) {
 	char temp[16];
 	int tempPos = 0;
 	int num = intPart;
-	
-	if (num < 0) num = -num;
-	
+
+	if (num < 0)
+		num = -num;
+
 	if (num == 0) {
 		temp[tempPos++] = '0';
 	} else {
@@ -134,7 +136,8 @@ void doubleToString(double value, char *buffer) {
 			int digit = (int)fracPart;
 			buffer[pos++] = '0' + digit;
 			fracPart -= digit;
-			if (fracPart < 0.0000001) break;
+			if (fracPart < 0.0000001)
+				break;
 		}
 	}
 
@@ -353,8 +356,8 @@ int main(int argc, char *argv[]) {
 	int currentY = BUTTON_START_Y;
 
 	// Row 1: C, ←, ±, ÷
-	addButtonWidget(&calcWindow, buttonText, clearBg, "C", startX,
-			currentY, BUTTON_SIZE, BUTTON_SIZE, 0, clearHandler);
+	addButtonWidget(&calcWindow, buttonText, clearBg, "C", startX, currentY,
+			BUTTON_SIZE, BUTTON_SIZE, 0, clearHandler);
 	addButtonWidget(&calcWindow, buttonText, buttonBg, "<",
 			startX + (BUTTON_SIZE + BUTTON_MARGIN), currentY,
 			BUTTON_SIZE, BUTTON_SIZE, 0, backspaceHandler);
