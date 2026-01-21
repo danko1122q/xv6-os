@@ -1,6 +1,7 @@
 # --- CONFIG ---
 K = kernel
 U = user
+A = app
 B = build
 I = include
 S = scripts
@@ -9,10 +10,10 @@ OS_NAME = Northos
 
 # --- OBJECTS ---
 OBJS_NAMES = bio.o character.o console.o exec.o file.o fs.o ide.o ioapic.o kalloc.o \
-	     kbd.o lapic.o log.o main.o mp.o picirq.o pipe.o proc.o \
-	     sleeplock.o spinlock.o string.o swtch.o syscall.o sysfile.o \
-	     sysproc.o trapasm.o trap.o uart.o vm.o gui.o mouse.o msg.o \
-	     window_manager.o icons_data.o app_icons_data.o
+             kbd.o lapic.o log.o main.o mp.o picirq.o pipe.o proc.o \
+             sleeplock.o spinlock.o string.o swtch.o syscall.o sysfile.o \
+             sysproc.o trapasm.o trap.o uart.o vm.o gui.o mouse.o msg.o \
+             window_manager.o icons_data.o app_icons_data.o
 
 OBJS = $(addprefix $(B)/, $(OBJS_NAMES))
 
@@ -22,8 +23,8 @@ OBJCOPY = objcopy
 OBJDUMP = objdump
 
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror \
-	 -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -nostdinc -I$(I) \
-	 -Wno-array-bounds -Wno-infinite-recursion
+         -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -nostdinc -I$(I) \
+         -Wno-array-bounds -Wno-infinite-recursion
 
 LDFLAGS = -m elf_i386
 
@@ -64,8 +65,7 @@ $(B)/kernel: $(OBJS) $(B)/entry.o $(B)/entryother $(B)/initcode $(B)/vectors.o $
 $(B)/%.o: $(K)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Rule khusus untuk character.c di folder include
-$(B)/character.o: $(I)/character.c
+$(B)/character.o: $(K)/character.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(B)/%.o: $(K)/%.S
@@ -95,7 +95,10 @@ $(B)/_%: $(B)/%.o $(ULIB)
 $(B)/%.o: $(U)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(B)/usys.o: $(U)/usys.S
+$(B)/%.o: $(A)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(B)/%.o: $(U)/%.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # --- FILE SYSTEM ---
@@ -111,7 +114,8 @@ UPROGS = \
 	$(B)/_editor \
 	$(B)/_explorer \
 	$(B)/_terminal \
-	$(B)/_floppybird
+	$(B)/_floppybird \
+	$(B)/_calculator
 
 $(IMG)/fs.img: $(B)/mkfs README.md LICENSE readme.txt $(UPROGS)
 	$(B)/mkfs $(IMG)/fs.img README.md LICENSE readme.txt $(UPROGS)
@@ -134,7 +138,7 @@ clean:
 # --- FORMATTING ---
 format:
 	@echo "Formatting source code"
-	@find $(K) $(U) -name "*.c" | grep -v "icons_data.c" | grep -v "app_icons_data.c" | xargs clang-format -i
+	@find $(K) $(U) $(A) -name "*.c" | grep -v "icons_data.c" | grep -v "app_icons_data.c" | xargs clang-format -i
 	@echo "Formatting complete."
 
 .PHONY: all clean setup run icons app_icons makerun format
