@@ -5,7 +5,7 @@ B = build
 I = include
 S = scripts
 IMG = img
-OS_NAME = xv6OS
+OS_NAME = Northos
 
 # --- OBJECTS ---
 OBJS_NAMES = bio.o character.o console.o exec.o file.o fs.o ide.o ioapic.o kalloc.o \
