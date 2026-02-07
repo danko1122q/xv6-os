@@ -11,39 +11,26 @@
 #include "types.h"
 #include "x86.h"
 
-/* Global screen properties */
 ushort SCREEN_WIDTH;
 ushort SCREEN_HEIGHT;
 int screen_size;
 
-/* Buffer pointers for direct memory access and off-screen rendering */
 RGB *screen;
 RGB *screen_buf;
 
-/**
- * Initializes the Graphical User Interface (GUI) environment.
- * Maps the physical video memory, reads display dimensions from VESA/BIOS,
- * and initializes the window manager.
- */
 void initGUI() {
-	// Points to graphic memory information passed by the bootloader
 	uint GraphicMem = KERNBASE + 0x1028;
 
 	uint baseAdd = *((uint *)GraphicMem);
 	screen = (RGB *)baseAdd;
 
-	// Read dimensions from KERNEL BASE offsets (VESA Information)
 	SCREEN_WIDTH = *((ushort *)(KERNBASE + 0x1012));
 	SCREEN_HEIGHT = *((ushort *)(KERNBASE + 0x1014));
 
-	screen_size =
-		(SCREEN_WIDTH * SCREEN_HEIGHT) * 3; // 3 bytes per pixel (RGB)
+	screen_size = (SCREEN_WIDTH * SCREEN_HEIGHT) * 3;
 
-	// Set secondary buffer address immediately after the primary screen
-	// memory
 	screen_buf = (RGB *)(baseAdd + screen_size);
 
-	// Initialize default mouse cursor colors
 	mouse_color[0].G = 0;
 	mouse_color[0].B = 0;
 	mouse_color[0].R = 0;
@@ -51,7 +38,6 @@ void initGUI() {
 	mouse_color[1].B = 200;
 	mouse_color[1].R = 200;
 
-	// Diagnostic output for kernel debugging
 	cprintf("KERNEL BASE ADDRESS: %x\n", KERNBASE);
 	cprintf("SCREEN PHYSICAL ADDRESS: %x\n", baseAdd);
 	cprintf("@Screen Width:   %d\n", SCREEN_WIDTH);
@@ -61,75 +47,56 @@ void initGUI() {
 	wmInit();
 }
 
-/**
- * Draws a single pixel by directly copying RGB values.
- */
 void drawPoint(RGB *color, RGB origin) {
 	color->R = origin.R;
 	color->G = origin.G;
 	color->B = origin.B;
 }
 
-/**
- * Draws a pixel with alpha blending support.
- * Uses a linear interpolation formula: Result = Background * (1 - Alpha) +
- * Source * Alpha
- */
 void drawPointAlpha(RGB *color, RGBA origin) {
-	float alpha;
-	// Opaque: skip calculations
+	uint alpha, inv_alpha;
+	
 	if (origin.A == 255) {
 		color->R = origin.R;
 		color->G = origin.G;
 		color->B = origin.B;
 		return;
 	}
-	// Fully transparent: skip drawing
 	if (origin.A == 0) {
 		return;
 	}
 
-	alpha = (float)origin.A / 255.0f;
-	color->R = (uchar)(color->R * (1.0f - alpha) + origin.R * alpha);
-	color->G = (uchar)(color->G * (1.0f - alpha) + origin.G * alpha);
-	color->B = (uchar)(color->B * (1.0f - alpha) + origin.B * alpha);
+	alpha = origin.A;
+	inv_alpha = 255 - alpha;
+	
+	color->R = (color->R * inv_alpha + origin.R * alpha) >> 8;
+	color->G = (color->G * inv_alpha + origin.G * alpha) >> 8;
+	color->B = (color->B * inv_alpha + origin.B * alpha) >> 8;
 }
 
-/**
- * Renders a single character from the font bitmap.
- * Includes clipping to prevent out-of-bounds memory access.
- */
 int drawCharacter(RGB *buf, int x, int y, char ch, RGBA color) {
 	int i, j;
 	RGB *t;
-	int ord = ch - 0x20; // Map ASCII to font array index
+	int ord = ch - 0x20;
 
 	if (ord < 0 || ord >= (CHARACTER_NUMBER - 1))
 		return -1;
 
 	for (i = 0; i < CHARACTER_HEIGHT; i++) {
-		// Vertical Clipping
 		if (y + i >= SCREEN_HEIGHT || y + i < 0)
 			continue;
 
 		for (j = 0; j < CHARACTER_WIDTH; j++) {
-			// Retrieve font intensity (alpha) from font data array
-			// (0-255)
 			uchar font_alpha = character[ord][i][j];
 
 			if (font_alpha > 0) {
-				// Horizontal Clipping
 				if (x + j >= SCREEN_WIDTH || x + j < 0)
 					continue;
 
-				// Calculate buffer offset
 				t = buf + (y + i) * SCREEN_WIDTH + x + j;
 
-				// ANTI-ALIASING KEY:
-				// Blend the user-defined color alpha with the
-				// font's inherent antialiasing alpha
 				RGBA smooth_color = color;
-				smooth_color.A = (color.A * font_alpha) / 255;
+				smooth_color.A = (color.A * font_alpha) >> 8;
 
 				drawPointAlpha(t, smooth_color);
 			}
@@ -138,10 +105,6 @@ int drawCharacter(RGB *buf, int x, int y, char ch, RGBA color) {
 	return CHARACTER_WIDTH;
 }
 
-/**
- * Renders an icon from predefined icon data.
- * Skips specific color keys to simulate transparency.
- */
 int drawIcon(RGB *buf, int x, int y, int icon, RGBA color) {
 	int i, j;
 	RGB *t;
@@ -158,15 +121,8 @@ int drawIcon(RGB *buf, int x, int y, int icon, RGBA color) {
 			if (x + j >= SCREEN_WIDTH || x + j < 0)
 				continue;
 
-			unsigned int raw_color =
-				icons_data[icon][i * ICON_SIZE + j];
+			unsigned int raw_color = icons_data[icon][i * ICON_SIZE + j];
 
-			/* * TRANSPARENCY CHECK: Skip pixel if it matches:
-			 * 1. 0xFF000000 (Opaque Black used as transparency key
-			 * in icons_data.c)
-			 * 2. 0x00000000 (Standard transparent)
-			 * 3. ICON_TRANSPARENT (Definition from icons.h)
-			 */
 			if (raw_color == 0xFF000000 ||
 			    raw_color == 0x00000000 ||
 			    raw_color == ICON_TRANSPARENT) {
@@ -187,9 +143,6 @@ int drawIcon(RGB *buf, int x, int y, int icon, RGBA color) {
 	return ICON_SIZE;
 }
 
-/**
- * Renders a standard null-terminated string.
- */
 void drawString(RGB *buf, int x, int y, char *str, RGBA color) {
 	int offset_x = 0;
 	while (*str != '\0') {
@@ -198,9 +151,6 @@ void drawString(RGB *buf, int x, int y, char *str, RGBA color) {
 	}
 }
 
-/**
- * Renders a string but stops if the next character exceeds the specified width.
- */
 void drawStringWithMaxWidth(RGB *buf, int x, int y, int width, char *str,
 			    RGBA color) {
 	int offset_x = 0;
@@ -210,9 +160,6 @@ void drawStringWithMaxWidth(RGB *buf, int x, int y, int width, char *str,
 	}
 }
 
-/**
- * Renders an RGBA image buffer to the screen buffer.
- */
 void drawImage(RGB *buf, RGBA *img, int x, int y, int width, int height,
 	       int max_x, int max_y) {
 	int i, j;
@@ -230,16 +177,12 @@ void drawImage(RGB *buf, RGBA *img, int x, int y, int width, int height,
 				continue;
 
 			t = buf + (y + i) * SCREEN_WIDTH + x + j;
-			o = img + (height - i) * width +
-			    j; // Vertical flip if needed
+			o = img + (height - i) * width + j;
 			drawPointAlpha(t, *o);
 		}
 	}
 }
 
-/**
- * Renders a 24-bit RGB image using fast memory move (memmove).
- */
 void draw24Image(RGB *buf, RGB *img, int x, int y, int width, int height,
 		 int max_x, int max_y) {
 	int i;
@@ -258,9 +201,6 @@ void draw24Image(RGB *buf, RGB *img, int x, int y, int width, int height,
 	}
 }
 
-/**
- * Renders a specific rectangular sub-part of an RGB image.
- */
 void draw24ImagePart(RGB *buf, RGB *img, int x, int y, int width, int height,
 		     int subx, int suby, int subw, int subh) {
 	if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT)
@@ -286,33 +226,42 @@ void draw24ImagePart(RGB *buf, RGB *img, int x, int y, int width, int height,
 	}
 }
 
-/**
- * Draws a filled rectangle with alpha blending and boundary clipping.
- */
 void drawRectBound(RGB *buf, int x, int y, int width, int height, RGBA fill,
 		   int max_x, int max_y) {
 	int i, j;
 	RGB *t;
-	for (i = 0; i < height; i++) {
-		if (y + i < 0)
-			continue;
-		if (y + i >= max_y)
-			break;
-		for (j = 0; j < width; j++) {
-			if (x + j < 0)
-				continue;
-			if (x + j >= max_x)
-				break;
-
-			t = buf + (y + i) * SCREEN_WIDTH + x + j;
+	
+	if (x >= max_x || y >= max_y || x + width <= 0 || y + height <= 0)
+		return;
+	
+	int start_x = x < 0 ? 0 : x;
+	int start_y = y < 0 ? 0 : y;
+	int end_x = (x + width > max_x) ? max_x : x + width;
+	int end_y = (y + height > max_y) ? max_y : y + height;
+	
+	if (fill.A == 255) {
+		RGB solid_color;
+		solid_color.R = fill.R;
+		solid_color.G = fill.G;
+		solid_color.B = fill.B;
+		
+		for (i = start_y; i < end_y; i++) {
+			t = buf + i * SCREEN_WIDTH + start_x;
+			for (j = start_x; j < end_x; j++) {
+				*t++ = solid_color;
+			}
+		}
+		return;
+	}
+	
+	for (i = start_y; i < end_y; i++) {
+		for (j = start_x; j < end_x; j++) {
+			t = buf + i * SCREEN_WIDTH + j;
 			drawPointAlpha(t, fill);
 		}
 	}
 }
 
-/**
- * Draws the outline (border) of a rectangle.
- */
 void drawRectBorder(RGB *buf, RGB color, int x, int y, int width, int height) {
 	if (x >= SCREEN_WIDTH || x + width < 0 || y >= SCREEN_HEIGHT ||
 	    y + height < 0 || width < 0 || height < 0)
@@ -321,14 +270,12 @@ void drawRectBorder(RGB *buf, RGB color, int x, int y, int width, int height) {
 	int i;
 	RGB *t = buf + y * SCREEN_WIDTH + x;
 
-	// Top border
 	if (y > 0) {
 		for (i = 0; i < width; i++) {
 			if (x + i > 0 && x + i < SCREEN_WIDTH)
 				*(t + i) = color;
 		}
 	}
-	// Bottom border
 	if (y + height < SCREEN_HEIGHT) {
 		RGB *o = t + height * SCREEN_WIDTH;
 		for (i = 0; i < width; i++) {
@@ -336,14 +283,12 @@ void drawRectBorder(RGB *buf, RGB color, int x, int y, int width, int height) {
 				*(o + i) = color;
 		}
 	}
-	// Left border
 	if (x > 0) {
 		for (i = 0; i < height; i++) {
 			if (y + i > 0 && y + i < SCREEN_HEIGHT)
 				*(t + i * SCREEN_WIDTH) = color;
 		}
 	}
-	// Right border
 	if (x + width < SCREEN_WIDTH) {
 		RGB *o = t + width;
 		for (i = 0; i < height; i++) {
@@ -353,54 +298,49 @@ void drawRectBorder(RGB *buf, RGB color, int x, int y, int width, int height) {
 	}
 }
 
-/**
- * General function to draw a filled rectangle on the whole screen.
- */
 void drawRect(RGB *buf, int x, int y, int width, int height, RGBA fill) {
 	drawRectBound(buf, x, y, width, height, fill, SCREEN_WIDTH,
 		      SCREEN_HEIGHT);
 }
 
-/**
- * Draws a rectangle using coordinate pairs (min_x, min_y) to (max_x, max_y).
- */
 void drawRectByCoord(RGB *buf, int xmin, int ymin, int xmax, int ymax,
 		     RGBA fill) {
 	drawRect(buf, xmin, ymin, xmax - xmin, ymax - ymin, fill);
 }
 
-/**
- * Clears a specific area of the screen by restoring it from a background
- * buffer.
- */
 void clearRect(RGB *buf, RGB *temp_buf, int x, int y, int width, int height) {
+	if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT || x + width <= 0 || y + height <= 0)
+		return;
+	
+	int start_y = y < 0 ? 0 : y;
+	int end_y = (y + height > SCREEN_HEIGHT) ? SCREEN_HEIGHT : y + height;
+	int start_x = x < 0 ? 0 : x;
+	int copy_width = (x + width > SCREEN_WIDTH) ? SCREEN_WIDTH - x : width;
+	
+	if (start_x < 0) {
+		copy_width += start_x;
+		start_x = 0;
+	}
+	
+	if (copy_width <= 0)
+		return;
+	
 	RGB *t;
 	RGB *o;
-	int i;
-	int max_line = (SCREEN_WIDTH - x) < width ? (SCREEN_WIDTH - x) : width;
-	for (i = 0; i < height; i++) {
-		if (y + i >= SCREEN_HEIGHT)
-			break;
-		if (y + i < 0)
-			continue;
-
-		t = buf + (y + i) * SCREEN_WIDTH + x;
-		o = temp_buf + (y + i) * SCREEN_WIDTH + x;
-		memmove(t, o, max_line * 3);
+	int bytes_to_copy = copy_width * 3;
+	
+	for (int i = start_y; i < end_y; i++) {
+		t = buf + i * SCREEN_WIDTH + start_x;
+		o = temp_buf + i * SCREEN_WIDTH + start_x;
+		memmove(t, o, bytes_to_copy);
 	}
 }
 
-/**
- * Coordinates-based clearing of an area.
- */
 void clearRectByCoord(RGB *buf, RGB *temp_buf, int xmin, int ymin, int xmax,
 		      int ymax) {
 	clearRect(buf, temp_buf, xmin, ymin, xmax - xmin, ymax - ymin);
 }
 
-/**
- * Renders the mouse cursor at the given (x, y) coordinates.
- */
 void drawMouse(RGB *buf, int mode, int x, int y) {
 	int i, j;
 	RGB *t;
@@ -424,9 +364,6 @@ void drawMouse(RGB *buf, int mode, int x, int y) {
 	}
 }
 
-/**
- * Removes the mouse cursor by clearing its last known position.
- */
 void clearMouse(RGB *buf, RGB *temp_buf, int x, int y) {
 	clearRect(buf, temp_buf, x, y, MOUSE_WIDTH, MOUSE_HEIGHT);
 }

@@ -128,7 +128,7 @@ QEMUOPTS = -drive file=$(IMG)/fs.img,index=1,media=disk,format=raw \
 	   -smp 2 -m 512
 
 run:
-	@qemu-system-i386 -serial mon:stdio $(QEMUOPTS)
+	@qemu-system-i386  -serial mon:stdio $(QEMUOPTS)
 
 makerun: all run
 

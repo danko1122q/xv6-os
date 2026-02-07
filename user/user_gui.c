@@ -19,7 +19,8 @@ void drawPoint(RGB *color, RGB origin) {
 }
 
 void drawPointAlpha(RGB *color, RGBA origin) {
-	float alpha;
+	uint alpha, inv_alpha;
+	
 	if (origin.A == 255) {
 		color->R = origin.R;
 		color->G = origin.G;
@@ -29,27 +30,46 @@ void drawPointAlpha(RGB *color, RGBA origin) {
 	if (origin.A == 0) {
 		return;
 	}
-	alpha = (float)origin.A / 255;
-	color->R = color->R * (1 - alpha) + origin.R * alpha;
-	color->G = color->G * (1 - alpha) + origin.G * alpha;
-	color->B = color->B * (1 - alpha) + origin.B * alpha;
+	
+	alpha = origin.A;
+	inv_alpha = 255 - alpha;
+	
+	color->R = (color->R * inv_alpha + origin.R * alpha) >> 8;
+	color->G = (color->G * inv_alpha + origin.G * alpha) >> 8;
+	color->B = (color->B * inv_alpha + origin.B * alpha) >> 8;
 }
 
 void fillRect(RGB *buf, int x, int y, int width, int height, int max_x,
 	      int max_y, RGBA fill) {
 	int i, j;
 	RGB *t;
-	for (i = 0; i < height; i++) {
-		if (y + i < 0)
-			continue;
-		if (y + i >= max_y)
-			break;
-		for (j = 0; j < width; j++) {
-			if (x + j < 0)
-				continue;
-			if (x + j >= max_x)
-				break;
-			t = buf + (y + i) * max_x + x + j;
+	
+	if (x >= max_x || y >= max_y || x + width <= 0 || y + height <= 0)
+		return;
+	
+	int start_x = x < 0 ? 0 : x;
+	int start_y = y < 0 ? 0 : y;
+	int end_x = (x + width > max_x) ? max_x : x + width;
+	int end_y = (y + height > max_y) ? max_y : y + height;
+	
+	if (fill.A == 255) {
+		RGB solid_color;
+		solid_color.R = fill.R;
+		solid_color.G = fill.G;
+		solid_color.B = fill.B;
+		
+		for (i = start_y; i < end_y; i++) {
+			t = buf + i * max_x + start_x;
+			for (j = start_x; j < end_x; j++) {
+				*t++ = solid_color;
+			}
+		}
+		return;
+	}
+	
+	for (i = start_y; i < end_y; i++) {
+		for (j = start_x; j < end_x; j++) {
+			t = buf + i * max_x + j;
 			drawPointAlpha(t, fill);
 		}
 	}
@@ -61,35 +81,28 @@ int drawCharacter(RGB *buf, int x, int y, char ch, RGBA color, int win_width,
 	RGB *t;
 	int ord = ch - 0x20;
 
-	// Character validation
 	if (ord < 0 || ord >= (CHARACTER_NUMBER - 1))
 		return -1;
 
+	if (x >= win_width || y >= win_height || 
+	    x + CHARACTER_WIDTH <= 0 || y + CHARACTER_HEIGHT <= 0)
+		return CHARACTER_WIDTH;
+
 	for (i = 0; i < CHARACTER_HEIGHT; i++) {
-		// Clipping: Check if the character row is within the window
-		// height boundaries
 		if (y + i >= win_height || y + i < 0)
 			continue;
 
 		for (j = 0; j < CHARACTER_WIDTH; j++) {
-			// Clipping: Check if the character column is within the
-			// window width boundaries
 			if (x + j >= win_width || x + j < 0)
 				continue;
 
 			uchar font_alpha = character[ord][i][j];
 
 			if (font_alpha > 0) {
-				// VITAL FIX: Use win_width as the multiplier
-				// instead of a hardcoded value (e.g., 800) to
-				// calculate the correct buffer index for
-				// different window sizes.
 				t = buf + (y + i) * win_width + (x + j);
 
 				RGBA smooth_color = color;
-				// Alpha blending for font smoothing
-				// (anti-aliasing)
-				smooth_color.A = (color.A * font_alpha) / 255;
+				smooth_color.A = (color.A * font_alpha) >> 8;
 
 				drawPointAlpha(t, smooth_color);
 			}
@@ -104,18 +117,11 @@ void drawString(window *win, char *str, RGBA color, int x, int y, int width,
 	int offset_y = 0;
 
 	while (*str != '\0') {
-		// If text row exceeds the provided area height
 		if (offset_y + CHARACTER_HEIGHT > height)
 			break;
 
 		if (*str != '\n') {
-			// Check if the current character position is within the
-			// requested drawing area (width)
 			if (offset_x + CHARACTER_WIDTH <= width) {
-				// CALL FIXED:
-				// Added win->width and win->height arguments so
-				// drawCharacter can calculate the buffer index
-				// correctly and perform clipping.
 				drawCharacter(win->window_buf, x + offset_x,
 					      y + offset_y, *str, color,
 					      win->width, win->height);
@@ -123,14 +129,11 @@ void drawString(window *win, char *str, RGBA color, int x, int y, int width,
 
 			offset_x += CHARACTER_WIDTH;
 
-			// Auto-wrap: If text exceeds the 'width' area, move to
-			// a new line
 			if (offset_x + CHARACTER_WIDTH > width) {
 				offset_x = 0;
 				offset_y += CHARACTER_HEIGHT;
 			}
 		} else {
-			// Handle manual newline character
 			offset_x = 0;
 			offset_y += CHARACTER_HEIGHT;
 		}
@@ -144,21 +147,18 @@ void drawImage(window *win, RGBA *img, int x, int y, int width, int height) {
 	RGB *t;
 	RGBA *o;
 
-	for (i = 0; i < height; i++) {
-		if (y + i >= win->height) {
-			break;
-		}
-		if (y + i < 0) {
-			continue;
-		}
-		for (j = 0; j < width; j++) {
-			if (x + j >= win->width) {
-				break;
-			}
-			if (x + j < 0) {
-				continue;
-			}
-			t = win->window_buf + (y + i) * win->width + x + j;
+	if (x >= win->width || y >= win->height || 
+	    x + width <= 0 || y + height <= 0)
+		return;
+
+	int start_y = (y < 0) ? -y : 0;
+	int start_x = (x < 0) ? -x : 0;
+	int end_y = (y + height > win->height) ? win->height - y : height;
+	int end_x = (x + width > win->width) ? win->width - x : width;
+
+	for (i = start_y; i < end_y; i++) {
+		for (j = start_x; j < end_x; j++) {
+			t = win->window_buf + (y + i) * win->width + (x + j);
 			o = img + (height - i - 1) * width + j;
 			drawPointAlpha(t, *o);
 		}
@@ -169,7 +169,12 @@ void draw24Image(window *win, RGB *img, int x, int y, int width, int height) {
 	int i;
 	RGB *t;
 	RGB *o;
+	
+	if (x >= win->width || y >= win->height || x < 0 || y < 0)
+		return;
+		
 	int max_line = (win->width - x) < width ? (win->width - x) : width;
+	
 	for (i = 0; i < height; i++) {
 		if (y + i >= win->height) {
 			break;
@@ -192,8 +197,6 @@ void drawRect(window *win, RGB color, int x, int y, int width, int height) {
 		return;
 	}
 	int i;
-	// int max_line = (SCREEN_WIDTH - x) < width ? (SCREEN_WIDTH - x) :
-	// width;
 	RGB *t = win->window_buf + y * screen_width + x;
 
 	if (y >= 0) {
@@ -253,6 +256,24 @@ void drawFillRect(window *win, RGBA color, int x, int y, int width,
 	if (y + height > screen_height) {
 		height = screen_height - y;
 	}
+	
+	if (color.A == 255) {
+		RGB solid_color;
+		solid_color.R = color.R;
+		solid_color.G = color.G;
+		solid_color.B = color.B;
+		
+		int i, j;
+		RGB *t;
+		for (i = 0; i < height; i++) {
+			t = win->window_buf + (y + i) * win->width + x;
+			for (j = 0; j < width; j++) {
+				*t++ = solid_color;
+			}
+		}
+		return;
+	}
+	
 	int i, j;
 	RGB *t;
 	for (i = 0; i < height; i++) {
@@ -295,7 +316,6 @@ void draw24FillRect(window *win, RGB color, int x, int y, int width,
 	}
 }
 
-// user_gui.c
 void drawIcon(window *win, int icon, RGBA color, int x, int y, int width,
 	      int height) {
 	int i, j;
@@ -315,23 +335,17 @@ void drawIcon(window *win, int icon, RGBA color, int x, int y, int width,
 
 			p = icons_data[icon][i * ICON_SIZE + j];
 
-			// JIKA pixel bernilai 0 (hitam murni di area
-			// transparan), kita lompati (skip) Ini akan membuat
-			// warna biru di bawahnya tetap terlihat
 			if (p == 0) {
 				continue;
 			}
 
 			t = win->window_buf + (y + i) * win->width + (x + j);
 
-			// Gunakan drawPointAlpha agar pixel menyatu dengan
-			// background
 			RGBA pixel_color;
 			pixel_color.R = (p >> 16) & 0xFF;
 			pixel_color.G = (p >> 8) & 0xFF;
 			pixel_color.B = p & 0xFF;
-			pixel_color.A = 255; // Kita anggap bagian yang tidak 0
-					     // adalah solid
+			pixel_color.A = 255;
 
 			drawPointAlpha(t, pixel_color);
 		}
