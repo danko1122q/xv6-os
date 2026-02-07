@@ -261,10 +261,10 @@ int main(int argc, char *argv[]) {
 
 	(void)argc;
 	(void)argv;
-	
+
 	// Hardcode caller ke 0 (desktop) untuk sekarang
 	caller = 0;
-	
+
 	// Window setup
 	startWindow.width = MENU_WIDTH;
 	startWindow.height = MENU_HEIGHT;

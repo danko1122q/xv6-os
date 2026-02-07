@@ -61,9 +61,7 @@ int lastSelectionUpdateY = 0;
 RGB *backgroundCache = 0;
 int backgroundCached = 0;
 
-static inline int abs_int(int x) {
-	return x < 0 ? -x : x;
-}
+static inline int abs_int(int x) { return x < 0 ? -x : x; }
 
 void clearAllSelections() {
 	for (int i = 0; i < MAX_APPS; i++) {
@@ -71,24 +69,26 @@ void clearAllSelections() {
 	}
 }
 
-int isAppInSelectionBox(int appIdx, int boxX1, int boxY1, int boxX2, int boxY2) {
+int isAppInSelectionBox(int appIdx, int boxX1, int boxY1, int boxX2,
+			int boxY2) {
 	if (!apps[appIdx].isActive)
 		return 0;
-	
+
 	int iconX1 = apps[appIdx].x;
 	int iconY1 = apps[appIdx].y;
 	int iconX2 = iconX1 + ICON_SIZE;
 	int iconY2 = iconY1 + APP_TOTAL_HEIGHT;
-	
-	return !(iconX2 < boxX1 || iconX1 > boxX2 || 
-	         iconY2 < boxY1 || iconY1 > boxY2);
+
+	return !(iconX2 < boxX1 || iconX1 > boxX2 || iconY2 < boxY1 ||
+		 iconY1 > boxY2);
 }
 
 void updateSelection(int boxX1, int boxY1, int boxX2, int boxY2) {
 	for (int i = 0; i < MAX_APPS; i++) {
 		if (!apps[i].isActive)
 			continue;
-		apps[i].isSelected = isAppInSelectionBox(i, boxX1, boxY1, boxX2, boxY2);
+		apps[i].isSelected =
+			isAppInSelectionBox(i, boxX1, boxY1, boxX2, boxY2);
 	}
 }
 
@@ -99,59 +99,65 @@ void drawSelectionBoxFast(int x1, int y1, int x2, int y2) {
 	int maxY = max(y1, y2);
 	int width = maxX - minX;
 	int height = maxY - minY;
-	
+
 	if (width <= 2 || height <= 2)
 		return;
-	
-	if (minX < 0) minX = 0;
-	if (minY < 0) minY = 0;
-	if (maxX > desktop.width) maxX = desktop.width;
-	if (maxY > desktop.height) maxY = desktop.height;
+
+	if (minX < 0)
+		minX = 0;
+	if (minY < 0)
+		minY = 0;
+	if (maxX > desktop.width)
+		maxX = desktop.width;
+	if (maxY > desktop.height)
+		maxY = desktop.height;
 	width = maxX - minX;
 	height = maxY - minY;
-	
+
 	RGB *buf = desktop.window_buf;
 	int bufWidth = desktop.width;
-	
+
 	RGB fillColor;
 	fillColor.R = 190;
 	fillColor.G = 210;
 	fillColor.B = 255;
-	
+
 	RGB borderColor;
 	borderColor.R = 50;
 	borderColor.G = 100;
 	borderColor.B = 200;
-	
+
 	if (minY >= 0 && minY < desktop.height) {
 		RGB *scanline = buf + minY * bufWidth + minX;
 		for (int x = 0; x < width; x++) {
 			scanline[x] = borderColor;
 		}
 	}
-	
+
 	if (maxY - 1 >= 0 && maxY - 1 < desktop.height) {
 		RGB *scanline = buf + (maxY - 1) * bufWidth + minX;
 		for (int x = 0; x < width; x++) {
 			scanline[x] = borderColor;
 		}
 	}
-	
+
 	for (int y = minY; y < maxY; y++) {
-		if (y >= 0 && y < desktop.height && minX >= 0 && minX < bufWidth) {
+		if (y >= 0 && y < desktop.height && minX >= 0 &&
+		    minX < bufWidth) {
 			buf[y * bufWidth + minX] = borderColor;
 		}
 	}
-	
+
 	for (int y = minY; y < maxY; y++) {
-		if (y >= 0 && y < desktop.height && maxX - 1 >= 0 && maxX - 1 < bufWidth) {
+		if (y >= 0 && y < desktop.height && maxX - 1 >= 0 &&
+		    maxX - 1 < bufWidth) {
 			buf[y * bufWidth + maxX - 1] = borderColor;
 		}
 	}
-	
+
 	int area = width * height;
 	int skipFactor = 2;
-	
+
 	if (area < 10000) {
 		skipFactor = 2;
 	} else if (area < 50000) {
@@ -159,18 +165,18 @@ void drawSelectionBoxFast(int x1, int y1, int x2, int y2) {
 	} else {
 		skipFactor = 3;
 	}
-	
+
 	for (int y = minY + 1; y < maxY - 1; y++) {
 		if (y < 0 || y >= desktop.height)
 			continue;
-			
+
 		RGB *scanline = buf + y * bufWidth + minX + 1;
-		
+
 		int startOffset = (y % skipFactor);
 		for (int x = startOffset; x < width - 2; x += skipFactor) {
 			if (minX + 1 + x >= 0 && minX + 1 + x < bufWidth) {
 				RGB *pixel = &scanline[x];
-				
+
 				pixel->R = (pixel->R + fillColor.R) >> 1;
 				pixel->G = (pixel->G + fillColor.G) >> 1;
 				pixel->B = (pixel->B + fillColor.B) >> 1;
@@ -185,20 +191,16 @@ void drawSelectionHighlight(int x, int y) {
 	highlightColor.G = 220;
 	highlightColor.B = 0;
 	highlightColor.A = 100;
-	
+
 	int offset = 2;
-	drawFillRect(&desktop, highlightColor, 
-	            x - offset, y - offset, 
-	            ICON_SIZE + offset * 2, offset);
-	drawFillRect(&desktop, highlightColor, 
-	            x - offset, y + ICON_SIZE, 
-	            ICON_SIZE + offset * 2, offset);
-	drawFillRect(&desktop, highlightColor, 
-	            x - offset, y, 
-	            offset, ICON_SIZE);
-	drawFillRect(&desktop, highlightColor, 
-	            x + ICON_SIZE, y, 
-	            offset, ICON_SIZE);
+	drawFillRect(&desktop, highlightColor, x - offset, y - offset,
+		     ICON_SIZE + offset * 2, offset);
+	drawFillRect(&desktop, highlightColor, x - offset, y + ICON_SIZE,
+		     ICON_SIZE + offset * 2, offset);
+	drawFillRect(&desktop, highlightColor, x - offset, y, offset,
+		     ICON_SIZE);
+	drawFillRect(&desktop, highlightColor, x + ICON_SIZE, y, offset,
+		     ICON_SIZE);
 }
 
 void drawAppIconFast(int x, int y, int iconId) {
@@ -210,19 +212,19 @@ void drawAppIconFast(int x, int y, int iconId) {
 
 	RGB *buf = desktop.window_buf;
 	int bufWidth = desktop.width;
-	
+
 	for (int iy = 0; iy < APP_ICON_SIZE; iy++) {
 		int screenY = y + iy;
 		if (screenY < 0 || screenY >= desktop.height)
 			continue;
-			
+
 		RGB *scanline = buf + screenY * bufWidth + x;
-		
+
 		for (int ix = 0; ix < APP_ICON_SIZE; ix++) {
 			int screenX = x + ix;
 			if (screenX < 0 || screenX >= bufWidth)
 				continue;
-				
+
 			int idx = iy * APP_ICON_SIZE + ix;
 			unsigned int pixel = app_icons_data[iconId][idx];
 
@@ -255,14 +257,15 @@ void renderAllApps() {
 			textX = apps[i].x + (ICON_SIZE - textWidth) / 2;
 		}
 
-		drawString(&desktop, apps[i].name, textColor, textX, labelY, 80, LABEL_HEIGHT);
+		drawString(&desktop, apps[i].name, textColor, textX, labelY, 80,
+			   LABEL_HEIGHT);
 	}
 }
 
 int findAppAtPosition(int mouseX, int mouseY) {
 	int foundIdx = -1;
 	int topMostZ = -1;
-	
+
 	for (int i = 0; i < MAX_APPS; i++) {
 		if (!apps[i].isActive)
 			continue;
@@ -270,15 +273,15 @@ int findAppAtPosition(int mouseX, int mouseY) {
 		int x = apps[i].x;
 		int y = apps[i].y;
 
-		if (mouseX >= x && mouseX < x + ICON_SIZE && 
-		    mouseY >= y && mouseY < y + APP_TOTAL_HEIGHT) {
+		if (mouseX >= x && mouseX < x + ICON_SIZE && mouseY >= y &&
+		    mouseY < y + APP_TOTAL_HEIGHT) {
 			if (i > topMostZ) {
 				topMostZ = i;
 				foundIdx = i;
 			}
 		}
 	}
-	
+
 	return foundIdx;
 }
 
@@ -300,11 +303,11 @@ void addDesktopApp(char *name, char *exec, int iconId, int x, int y) {
 void restoreBackground() {
 	if (!backgroundCached)
 		return;
-	
+
 	RGB *dst = desktop.window_buf;
 	RGB *src = backgroundCache;
 	int totalPixels = desktop.width * desktop.height;
-	
+
 	for (int i = 0; i < totalPixels; i++) {
 		dst[i] = src[i];
 	}
@@ -313,32 +316,38 @@ void restoreBackground() {
 void createBackgroundCache() {
 	if (backgroundCache != 0)
 		return;
-	
+
 	int cacheSize = desktop.width * desktop.height * sizeof(RGB);
 	backgroundCache = (RGB *)malloc(cacheSize);
-	
+
 	if (backgroundCache == 0) {
 		backgroundCached = 0;
 		return;
 	}
-	
+
 	for (int y = 0; y < desktop.height; y++) {
 		int factor_256 = (y * 256) / desktop.height;
-		
+
 		RGB currentColor;
-		currentColor.R = desktopColorTop.R + 
-		                (((desktopColorBottom.R - desktopColorTop.R) * factor_256) >> 8);
-		currentColor.G = desktopColorTop.G + 
-		                (((desktopColorBottom.G - desktopColorTop.G) * factor_256) >> 8);
-		currentColor.B = desktopColorTop.B + 
-		                (((desktopColorBottom.B - desktopColorTop.B) * factor_256) >> 8);
-		
+		currentColor.R = desktopColorTop.R +
+				 (((desktopColorBottom.R - desktopColorTop.R) *
+				   factor_256) >>
+				  8);
+		currentColor.G = desktopColorTop.G +
+				 (((desktopColorBottom.G - desktopColorTop.G) *
+				   factor_256) >>
+				  8);
+		currentColor.B = desktopColorTop.B +
+				 (((desktopColorBottom.B - desktopColorTop.B) *
+				   factor_256) >>
+				  8);
+
 		RGB *scanline = backgroundCache + y * desktop.width;
 		for (int x = 0; x < desktop.width; x++) {
 			scanline[x] = currentColor;
 		}
 	}
-	
+
 	backgroundCached = 1;
 }
 
@@ -378,80 +387,100 @@ void customUpdateWindow() {
 				isDragging = 0;
 			}
 		}
-		
+
 		else if (msg.msg_type == M_MOUSE_MOVE) {
 			if (draggingApp != -1 && !isSelecting) {
 				int deltaX = mouseX - dragStartX;
 				int deltaY = mouseY - dragStartY;
 
 				if (!isDragging) {
-					if (deltaX * deltaX + deltaY * deltaY > DRAG_THRESHOLD * DRAG_THRESHOLD) {
+					if (deltaX * deltaX + deltaY * deltaY >
+					    DRAG_THRESHOLD * DRAG_THRESHOLD) {
 						isDragging = 1;
 					}
 				}
 
 				if (isDragging) {
-					apps[draggingApp].x = appOriginalX + deltaX;
-					apps[draggingApp].y = appOriginalY + deltaY;
+					apps[draggingApp].x =
+						appOriginalX + deltaX;
+					apps[draggingApp].y =
+						appOriginalY + deltaY;
 
 					if (apps[draggingApp].x < 0)
 						apps[draggingApp].x = 0;
 					if (apps[draggingApp].y < 0)
 						apps[draggingApp].y = 0;
-					if (apps[draggingApp].x + ICON_SIZE > SCREEN_WIDTH)
-						apps[draggingApp].x = SCREEN_WIDTH - ICON_SIZE;
-					if (apps[draggingApp].y + APP_TOTAL_HEIGHT > SCREEN_HEIGHT - 40)
-						apps[draggingApp].y = SCREEN_HEIGHT - 40 - APP_TOTAL_HEIGHT;
+					if (apps[draggingApp].x + ICON_SIZE >
+					    SCREEN_WIDTH)
+						apps[draggingApp].x =
+							SCREEN_WIDTH -
+							ICON_SIZE;
+					if (apps[draggingApp].y +
+						    APP_TOTAL_HEIGHT >
+					    SCREEN_HEIGHT - 40)
+						apps[draggingApp].y =
+							SCREEN_HEIGHT - 40 -
+							APP_TOTAL_HEIGHT;
 
 					desktop.needsRepaint = 1;
 				}
 			}
-			
+
 			if (isSelecting) {
 				selectionCurrentX = mouseX;
 				selectionCurrentY = mouseY;
 				desktop.needsRepaint = 1;
-				
-				int deltaX = abs_int(mouseX - lastSelectionUpdateX);
-				int deltaY = abs_int(mouseY - lastSelectionUpdateY);
-				
-				if (deltaX >= SELECTION_UPDATE_THRESHOLD || 
+
+				int deltaX =
+					abs_int(mouseX - lastSelectionUpdateX);
+				int deltaY =
+					abs_int(mouseY - lastSelectionUpdateY);
+
+				if (deltaX >= SELECTION_UPDATE_THRESHOLD ||
 				    deltaY >= SELECTION_UPDATE_THRESHOLD) {
-					
-					int minX = min(selectionStartX, selectionCurrentX);
-					int minY = min(selectionStartY, selectionCurrentY);
-					int maxX = max(selectionStartX, selectionCurrentX);
-					int maxY = max(selectionStartY, selectionCurrentY);
-					
+
+					int minX = min(selectionStartX,
+						       selectionCurrentX);
+					int minY = min(selectionStartY,
+						       selectionCurrentY);
+					int maxX = max(selectionStartX,
+						       selectionCurrentX);
+					int maxY = max(selectionStartY,
+						       selectionCurrentY);
+
 					updateSelection(minX, minY, maxX, maxY);
 					lastSelectionUpdateX = mouseX;
 					lastSelectionUpdateY = mouseY;
 				}
 			}
 		}
-		
+
 		else if (msg.msg_type == M_MOUSE_UP) {
 			if (draggingApp != -1) {
 				draggingApp = -1;
 				isDragging = 0;
 				desktop.needsRepaint = 1;
 			}
-			
+
 			if (isSelecting) {
-				int minX = min(selectionStartX, selectionCurrentX);
-				int minY = min(selectionStartY, selectionCurrentY);
-				int maxX = max(selectionStartX, selectionCurrentX);
-				int maxY = max(selectionStartY, selectionCurrentY);
-				
+				int minX =
+					min(selectionStartX, selectionCurrentX);
+				int minY =
+					min(selectionStartY, selectionCurrentY);
+				int maxX =
+					max(selectionStartX, selectionCurrentX);
+				int maxY =
+					max(selectionStartY, selectionCurrentY);
+
 				updateSelection(minX, minY, maxX, maxY);
 				isSelecting = 0;
 				desktop.needsRepaint = 1;
 			}
 		}
-		
+
 		else if (msg.msg_type == M_MOUSE_LEFT_CLICK) {
 			int appIdx = findAppAtPosition(mouseX, mouseY);
-			
+
 			if (appIdx == -1) {
 				for (int p = desktop.widgetlisttail; p != -1;
 				     p = desktop.widgets[p].prev) {
@@ -466,10 +495,10 @@ void customUpdateWindow() {
 				}
 			}
 		}
-		
+
 		else if (msg.msg_type == M_MOUSE_DBCLICK) {
 			int appIdx = findAppAtPosition(mouseX, mouseY);
-			
+
 			if (appIdx != -1) {
 				if (fork() == 0) {
 					char *argv2[] = {apps[appIdx].exec, 0};
@@ -477,7 +506,7 @@ void customUpdateWindow() {
 					exit();
 				}
 			}
-			
+
 			draggingApp = -1;
 			isDragging = 0;
 			isSelecting = 0;
@@ -495,22 +524,33 @@ void customUpdateWindow() {
 				int factor_256 = (y * 256) / desktop.height;
 				RGBA currentColor;
 				currentColor.R = desktopColorTop.R +
-					(((desktopColorBottom.R - desktopColorTop.R) * factor_256) >> 8);
+						 (((desktopColorBottom.R -
+						    desktopColorTop.R) *
+						   factor_256) >>
+						  8);
 				currentColor.G = desktopColorTop.G +
-					(((desktopColorBottom.G - desktopColorTop.G) * factor_256) >> 8);
+						 (((desktopColorBottom.G -
+						    desktopColorTop.G) *
+						   factor_256) >>
+						  8);
 				currentColor.B = desktopColorTop.B +
-					(((desktopColorBottom.B - desktopColorTop.B) * factor_256) >> 8);
+						 (((desktopColorBottom.B -
+						    desktopColorTop.B) *
+						   factor_256) >>
+						  8);
 				currentColor.A = 255;
-				fillRect(desktop.window_buf, 0, y, desktop.width, 1,
-					 desktop.width, desktop.height, currentColor);
+				fillRect(desktop.window_buf, 0, y,
+					 desktop.width, 1, desktop.width,
+					 desktop.height, currentColor);
 			}
 		}
 
 		renderAllApps();
-		
+
 		if (isSelecting) {
 			drawSelectionBoxFast(selectionStartX, selectionStartY,
-			                     selectionCurrentX, selectionCurrentY);
+					     selectionCurrentX,
+					     selectionCurrentY);
 		}
 
 		for (int p = desktop.widgetlisthead; p != -1;
@@ -519,11 +559,16 @@ void customUpdateWindow() {
 				RGB black = {0, 0, 0};
 				Widget *w = &desktop.widgets[p];
 				int width = w->position.xmax - w->position.xmin;
-				int height = w->position.ymax - w->position.ymin;
+				int height =
+					w->position.ymax - w->position.ymin;
 				int textYOffset = (height - 18) / 2;
-				int textXOffset = (width - strlen(w->context.button->text) * 9) / 2;
+				int textXOffset =
+					(width -
+					 strlen(w->context.button->text) * 9) /
+					2;
 
-				drawFillRect(&desktop, w->context.button->bg_color,
+				drawFillRect(&desktop,
+					     w->context.button->bg_color,
 					     w->position.xmin, w->position.ymin,
 					     width, height);
 				drawRect(&desktop, black, w->position.xmin,
@@ -540,13 +585,13 @@ void customUpdateWindow() {
 
 void startWindowHandler(Widget *w, message *msg) {
 	(void)w;
-	
+
 	if (msg->msg_type == M_MOUSE_LEFT_CLICK) {
 		printf(1, "Start button clicked!\n");
-		
+
 		if (fork() == 0) {
 			// Child: run startWindow
-			char *argv2[] = {"startWindow", 0};  // Tanpa argument
+			char *argv2[] = {"startWindow", 0}; // Tanpa argument
 			exec(argv2[0], argv2);
 			printf(1, "Failed to start startWindow\n");
 			exit();
@@ -579,16 +624,22 @@ int main(int argc, char *argv[]) {
 		int factor_256 = (y * 256) / desktop.height;
 		RGBA currentColor;
 		currentColor.R = desktopColorTop.R +
-			(((desktopColorBottom.R - desktopColorTop.R) * factor_256) >> 8);
+				 (((desktopColorBottom.R - desktopColorTop.R) *
+				   factor_256) >>
+				  8);
 		currentColor.G = desktopColorTop.G +
-			(((desktopColorBottom.G - desktopColorTop.G) * factor_256) >> 8);
+				 (((desktopColorBottom.G - desktopColorTop.G) *
+				   factor_256) >>
+				  8);
 		currentColor.B = desktopColorTop.B +
-			(((desktopColorBottom.B - desktopColorTop.B) * factor_256) >> 8);
+				 (((desktopColorBottom.B - desktopColorTop.B) *
+				   factor_256) >>
+				  8);
 		currentColor.A = 255;
 		fillRect(desktop.window_buf, 0, y, desktop.width, 1,
 			 desktop.width, desktop.height, currentColor);
 	}
-	
+
 	createBackgroundCache();
 
 	buttonColor.R = 41;

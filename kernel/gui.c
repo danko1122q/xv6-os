@@ -55,7 +55,7 @@ void drawPoint(RGB *color, RGB origin) {
 
 void drawPointAlpha(RGB *color, RGBA origin) {
 	uint alpha, inv_alpha;
-	
+
 	if (origin.A == 255) {
 		color->R = origin.R;
 		color->G = origin.G;
@@ -68,7 +68,7 @@ void drawPointAlpha(RGB *color, RGBA origin) {
 
 	alpha = origin.A;
 	inv_alpha = 255 - alpha;
-	
+
 	color->R = (color->R * inv_alpha + origin.R * alpha) >> 8;
 	color->G = (color->G * inv_alpha + origin.G * alpha) >> 8;
 	color->B = (color->B * inv_alpha + origin.B * alpha) >> 8;
@@ -121,7 +121,8 @@ int drawIcon(RGB *buf, int x, int y, int icon, RGBA color) {
 			if (x + j >= SCREEN_WIDTH || x + j < 0)
 				continue;
 
-			unsigned int raw_color = icons_data[icon][i * ICON_SIZE + j];
+			unsigned int raw_color =
+				icons_data[icon][i * ICON_SIZE + j];
 
 			if (raw_color == 0xFF000000 ||
 			    raw_color == 0x00000000 ||
@@ -230,21 +231,21 @@ void drawRectBound(RGB *buf, int x, int y, int width, int height, RGBA fill,
 		   int max_x, int max_y) {
 	int i, j;
 	RGB *t;
-	
+
 	if (x >= max_x || y >= max_y || x + width <= 0 || y + height <= 0)
 		return;
-	
+
 	int start_x = x < 0 ? 0 : x;
 	int start_y = y < 0 ? 0 : y;
 	int end_x = (x + width > max_x) ? max_x : x + width;
 	int end_y = (y + height > max_y) ? max_y : y + height;
-	
+
 	if (fill.A == 255) {
 		RGB solid_color;
 		solid_color.R = fill.R;
 		solid_color.G = fill.G;
 		solid_color.B = fill.B;
-		
+
 		for (i = start_y; i < end_y; i++) {
 			t = buf + i * SCREEN_WIDTH + start_x;
 			for (j = start_x; j < end_x; j++) {
@@ -253,7 +254,7 @@ void drawRectBound(RGB *buf, int x, int y, int width, int height, RGBA fill,
 		}
 		return;
 	}
-	
+
 	for (i = start_y; i < end_y; i++) {
 		for (j = start_x; j < end_x; j++) {
 			t = buf + i * SCREEN_WIDTH + j;
@@ -309,26 +310,27 @@ void drawRectByCoord(RGB *buf, int xmin, int ymin, int xmax, int ymax,
 }
 
 void clearRect(RGB *buf, RGB *temp_buf, int x, int y, int width, int height) {
-	if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT || x + width <= 0 || y + height <= 0)
+	if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT || x + width <= 0 ||
+	    y + height <= 0)
 		return;
-	
+
 	int start_y = y < 0 ? 0 : y;
 	int end_y = (y + height > SCREEN_HEIGHT) ? SCREEN_HEIGHT : y + height;
 	int start_x = x < 0 ? 0 : x;
 	int copy_width = (x + width > SCREEN_WIDTH) ? SCREEN_WIDTH - x : width;
-	
+
 	if (start_x < 0) {
 		copy_width += start_x;
 		start_x = 0;
 	}
-	
+
 	if (copy_width <= 0)
 		return;
-	
+
 	RGB *t;
 	RGB *o;
 	int bytes_to_copy = copy_width * 3;
-	
+
 	for (int i = start_y; i < end_y; i++) {
 		t = buf + i * SCREEN_WIDTH + start_x;
 		o = temp_buf + i * SCREEN_WIDTH + start_x;

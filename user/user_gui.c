@@ -20,7 +20,7 @@ void drawPoint(RGB *color, RGB origin) {
 
 void drawPointAlpha(RGB *color, RGBA origin) {
 	uint alpha, inv_alpha;
-	
+
 	if (origin.A == 255) {
 		color->R = origin.R;
 		color->G = origin.G;
@@ -30,10 +30,10 @@ void drawPointAlpha(RGB *color, RGBA origin) {
 	if (origin.A == 0) {
 		return;
 	}
-	
+
 	alpha = origin.A;
 	inv_alpha = 255 - alpha;
-	
+
 	color->R = (color->R * inv_alpha + origin.R * alpha) >> 8;
 	color->G = (color->G * inv_alpha + origin.G * alpha) >> 8;
 	color->B = (color->B * inv_alpha + origin.B * alpha) >> 8;
@@ -43,21 +43,21 @@ void fillRect(RGB *buf, int x, int y, int width, int height, int max_x,
 	      int max_y, RGBA fill) {
 	int i, j;
 	RGB *t;
-	
+
 	if (x >= max_x || y >= max_y || x + width <= 0 || y + height <= 0)
 		return;
-	
+
 	int start_x = x < 0 ? 0 : x;
 	int start_y = y < 0 ? 0 : y;
 	int end_x = (x + width > max_x) ? max_x : x + width;
 	int end_y = (y + height > max_y) ? max_y : y + height;
-	
+
 	if (fill.A == 255) {
 		RGB solid_color;
 		solid_color.R = fill.R;
 		solid_color.G = fill.G;
 		solid_color.B = fill.B;
-		
+
 		for (i = start_y; i < end_y; i++) {
 			t = buf + i * max_x + start_x;
 			for (j = start_x; j < end_x; j++) {
@@ -66,7 +66,7 @@ void fillRect(RGB *buf, int x, int y, int width, int height, int max_x,
 		}
 		return;
 	}
-	
+
 	for (i = start_y; i < end_y; i++) {
 		for (j = start_x; j < end_x; j++) {
 			t = buf + i * max_x + j;
@@ -84,8 +84,8 @@ int drawCharacter(RGB *buf, int x, int y, char ch, RGBA color, int win_width,
 	if (ord < 0 || ord >= (CHARACTER_NUMBER - 1))
 		return -1;
 
-	if (x >= win_width || y >= win_height || 
-	    x + CHARACTER_WIDTH <= 0 || y + CHARACTER_HEIGHT <= 0)
+	if (x >= win_width || y >= win_height || x + CHARACTER_WIDTH <= 0 ||
+	    y + CHARACTER_HEIGHT <= 0)
 		return CHARACTER_WIDTH;
 
 	for (i = 0; i < CHARACTER_HEIGHT; i++) {
@@ -147,8 +147,8 @@ void drawImage(window *win, RGBA *img, int x, int y, int width, int height) {
 	RGB *t;
 	RGBA *o;
 
-	if (x >= win->width || y >= win->height || 
-	    x + width <= 0 || y + height <= 0)
+	if (x >= win->width || y >= win->height || x + width <= 0 ||
+	    y + height <= 0)
 		return;
 
 	int start_y = (y < 0) ? -y : 0;
@@ -169,12 +169,12 @@ void draw24Image(window *win, RGB *img, int x, int y, int width, int height) {
 	int i;
 	RGB *t;
 	RGB *o;
-	
+
 	if (x >= win->width || y >= win->height || x < 0 || y < 0)
 		return;
-		
+
 	int max_line = (win->width - x) < width ? (win->width - x) : width;
-	
+
 	for (i = 0; i < height; i++) {
 		if (y + i >= win->height) {
 			break;
@@ -256,13 +256,13 @@ void drawFillRect(window *win, RGBA color, int x, int y, int width,
 	if (y + height > screen_height) {
 		height = screen_height - y;
 	}
-	
+
 	if (color.A == 255) {
 		RGB solid_color;
 		solid_color.R = color.R;
 		solid_color.G = color.G;
 		solid_color.B = color.B;
-		
+
 		int i, j;
 		RGB *t;
 		for (i = 0; i < height; i++) {
@@ -273,7 +273,7 @@ void drawFillRect(window *win, RGBA color, int x, int y, int width,
 		}
 		return;
 	}
-	
+
 	int i, j;
 	RGB *t;
 	for (i = 0; i < height; i++) {
