@@ -13,7 +13,7 @@ OBJS_NAMES = bio.o character.o console.o exec.o file.o fs.o ide.o ioapic.o kallo
              kbd.o lapic.o log.o main.o mp.o picirq.o pipe.o proc.o \
              sleeplock.o spinlock.o string.o swtch.o syscall.o sysfile.o \
              sysproc.o trapasm.o trap.o uart.o vm.o gui.o mouse.o msg.o \
-             window_manager.o icons_data.o app_icons_data.o
+             window_manager.o icons_data.o app_icons_data.o rtc.o
 
 OBJS = $(addprefix $(B)/, $(OBJS_NAMES))
 

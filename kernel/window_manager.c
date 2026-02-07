@@ -12,6 +12,7 @@
 #include "user_window.h"
 
 #include "window_manager.h"
+#include "rtc.h"
 
 int min(int x, int y) { return x < y ? x : y; }
 int max(int x, int y) { return x > y ? x : y; }
@@ -27,7 +28,6 @@ struct RGBA titleTextColor;
 
 #define MAX_WINDOW_CNT 50
 
-// linked-list of windows
 static struct {
 	struct proc *proc;
 	kernel_window wnd;
@@ -124,12 +124,11 @@ int dispatchMessage(msg_buf *buf, message *msg) {
 
 int getMessage(msg_buf *buf, message *result) {
 	if (buf->cnt == 0)
-		return 1; // Keluar lebih awal (Guard)
+		return 1;
 
 	acquire(&wmlock);
 	*result = buf->data[buf->front];
-	buf->front = (buf->front + 1) %
-		     MSG_BUF_SIZE; // Gunakan modulo agar lebih bersih
+	buf->front = (buf->front + 1) % MSG_BUF_SIZE;
 	buf->cnt--;
 	release(&wmlock);
 
@@ -137,35 +136,29 @@ int getMessage(msg_buf *buf, message *result) {
 }
 
 void wmInit() {
-	// Modern title bar - dark blue/gray
 	titleBarColor = (struct RGBA){.R = 45, .G = 52, .B = 64, .A = 255};
 	dockColor = (struct RGBA){.R = 30, .G = 35, .B = 42, .A = 255};
 
-	// Modern dock - dark
 	dockColor.R = 30;
 	dockColor.G = 35;
 	dockColor.B = 42;
 	dockColor.A = 255;
 
-	// Modern close button - red
 	closeColor.R = 239;
 	closeColor.G = 83;
 	closeColor.B = 80;
 	closeColor.A = 255;
 
-	// Icon color - white
 	iconColor.R = 255;
 	iconColor.G = 255;
 	iconColor.B = 255;
 	iconColor.A = 255;
 
-	// Title text - white
 	titleTextColor.R = 255;
 	titleTextColor.G = 255;
 	titleTextColor.B = 255;
 	titleTextColor.A = 255;
 
-	// Minimize button - gray
 	minimizeColor.R = 100;
 	minimizeColor.G = 108;
 	minimizeColor.B = 120;
@@ -247,8 +240,7 @@ void handleDesktopDockClick(int mouse_x, message *msg) {
 	int p;
 	int windowCount = getWindowCount();
 
-	if (windowCount > 0) // handle each program dock bar click
-	{
+	if (windowCount > 0) {
 		int xStart = START_ICON_WIDTH + 5;
 		int barWidth = min((SCREEN_WIDTH - START_ICON_WIDTH -
 				    SHOW_DESKTOP_ICON_WIDTH) /
@@ -275,10 +267,7 @@ void handleDesktopDockClick(int mouse_x, message *msg) {
 			}
 		}
 	}
-	if (mouse_x >=
-	    SCREEN_WIDTH -
-		    SHOW_DESKTOP_ICON_WIDTH) // handle show desktop icon click
-	{
+	if (mouse_x >= SCREEN_WIDTH - SHOW_DESKTOP_ICON_WIDTH) {
 		for (p = windowlisthead; p != -1; p = windowlist[p].next) {
 			if (p != desktopId) {
 				if (windowlist[p].wnd.minimized == 0) {
@@ -292,9 +281,7 @@ void handleDesktopDockClick(int mouse_x, message *msg) {
 		}
 	}
 	if (mouse_x <= START_ICON_WIDTH &&
-	    msg->msg_type ==
-		    M_MOUSE_LEFT_CLICK) // handle start window icon click
-	{
+	    msg->msg_type == M_MOUSE_LEFT_CLICK) {
 		if (popupwindow.caller != desktopId) {
 			message newmsg;
 			newmsg.msg_type = msg->msg_type;
@@ -306,7 +293,6 @@ void handleDesktopDockClick(int mouse_x, message *msg) {
 	}
 }
 
-// handle messages from mouse and keyboard
 void wmHandleMessage(message *msg) {
 	acquire(&wmlock);
 
@@ -334,13 +320,11 @@ void wmHandleMessage(message *msg) {
 		if (wm_mouse_pos.y < 0)
 			wm_mouse_pos.y = 0;
 
-		if (clickedOnTitle) // dragging the title bar
-		{
+		if (clickedOnTitle) {
 			mouseShape = 1;
 			moveFocusWindow(wm_mouse_pos.x - wm_last_mouse_pos.x,
 					wm_mouse_pos.y - wm_last_mouse_pos.y);
-		} else if (clickedOnContent) // dragging inside the window
-		{
+		} else if (clickedOnContent) {
 			newmsg.msg_type = msg->msg_type;
 			newmsg.params[0] =
 				wm_mouse_pos.x -
@@ -353,7 +337,6 @@ void wmHandleMessage(message *msg) {
 		}
 		break;
 	case M_MOUSE_DOWN:
-		// check if clicked on the popup first
 		if (popupwindow.caller != -1 &&
 		    isInRect(popupwindow.wnd.position.xmin,
 			     popupwindow.wnd.position.ymin,
@@ -362,11 +345,9 @@ void wmHandleMessage(message *msg) {
 			     wm_mouse_pos.y)) {
 			clickedOnPopup = 1;
 		} else {
-			// close the popup first
 			message closePopup;
 			closePopup.msg_type = WM_WINDOW_CLOSE;
 			dispatchMessage(&popupwindow.wnd.msg_buf, &closePopup);
-			// find the focus window
 			int p = windowlisttail;
 			for (; p != -1; p = windowlist[p].prev) {
 				kernel_window *win = &windowlist[p].wnd;
@@ -383,7 +364,6 @@ void wmHandleMessage(message *msg) {
 			if (p == -1)
 				focusWindow(desktopId);
 
-			// check if clicked on content or the title bar
 			kernel_window *win = &windowlist[windowlisttail].wnd;
 			if (isInRect(win->position.xmin,
 				     win->position.ymin - TITLE_HEIGHT,
@@ -408,7 +388,6 @@ void wmHandleMessage(message *msg) {
 					clickedOnTitle = 1;
 				}
 			}
-			// dispatch the message
 			if (isInRect(win->position.xmin, win->position.ymin,
 				     win->position.xmax, win->position.ymax,
 				     wm_mouse_pos.x, wm_mouse_pos.y)) {
@@ -441,7 +420,6 @@ void wmHandleMessage(message *msg) {
 			dispatchMessage(&popupwindow.wnd.msg_buf, &newmsg);
 		} else if (clickedOnContent) {
 			clickedOnContent = 0;
-			// check if clicked on window dock
 			if (windowlisttail == desktopId &&
 			    wm_mouse_pos.y >= SCREEN_HEIGHT - DOCK_HEIGHT &&
 			    wm_mouse_pos.y <= SCREEN_HEIGHT) {
@@ -457,8 +435,7 @@ void wmHandleMessage(message *msg) {
 				dispatchMessage(
 					&windowlist[windowlisttail].wnd.msg_buf,
 					&newmsg);
-				break; // Tambahkan break agar tidak lanjut ke
-				       // M_MOUSE_UP
+				break;
 			}
 		}
 	case M_MOUSE_UP:
@@ -499,21 +476,16 @@ void drawWindowBar(struct RGB *dst, kernel_window *win, struct RGBA barcolor) {
 	int ymin = win->position.ymin - TITLE_HEIGHT;
 	int ymax = win->position.ymin;
 
-	// Draw title bar background
 	drawRectByCoord(dst, xmin, ymin, xmax - 2 * TITLE_HEIGHT, ymax,
 			barcolor);
 
-	// Minimize button
 	drawRectByCoord(dst, xmax - 2 * TITLE_HEIGHT, ymin, xmax - TITLE_HEIGHT,
 			ymax, minimizeColor);
 
-	// Close button
 	drawRectByCoord(dst, xmax - TITLE_HEIGHT, ymin, xmax, ymax, closeColor);
 
-	// Title text - white
 	drawString(dst, xmin + 8, ymin + 6, win->title, titleTextColor);
 
-	// Icons - white
 	drawIcon(dst, xmax - 2 * TITLE_HEIGHT - 1, ymin - 1, 1, iconColor);
 	drawIcon(dst, xmax - TITLE_HEIGHT - 1, ymin - 1, 0, iconColor);
 }
@@ -522,11 +494,9 @@ void drawWindow(kernel_window *win) {
 	int width = win->position.xmax - win->position.xmin;
 	int height = win->position.ymax - win->position.ymin;
 
-	// directly flush the RGB array of window onto screen_buf
 	draw24ImagePart(screen_buf, win->window_buf, win->position.xmin,
 			win->position.ymin, width, height, 0, 0, width, height);
 
-	// Window border - subtle gray
 	RGB borderColor;
 	borderColor.R = 60;
 	borderColor.G = 68;
@@ -539,6 +509,26 @@ void drawWindow(kernel_window *win) {
 	}
 }
 
+// TAMBAH: Fungsi drawClock untuk menampilkan jam di dock
+void drawClock(struct RGB *dst) {
+	int hours, minutes, seconds;
+	rtc_read_time(&hours, &minutes, &seconds);
+
+	char timeStr[6];
+	timeStr[0] = '0' + (hours / 10);
+	timeStr[1] = '0' + (hours % 10);
+	timeStr[2] = ':';
+	timeStr[3] = '0' + (minutes / 10);
+	timeStr[4] = '0' + (minutes % 10);
+	timeStr[5] = '\0';
+
+	int clockWidth = 5 * 9;
+	int clockX = SCREEN_WIDTH - SHOW_DESKTOP_ICON_WIDTH - clockWidth - 15;
+	int clockY = SCREEN_HEIGHT - DOCK_HEIGHT + 10;
+
+	drawString(dst, clockX, clockY, timeStr, txtColor);
+}
+
 void drawDesktopDock(struct RGB *dst) {
 	drawRectByCoord(dst, 0, SCREEN_HEIGHT - DOCK_HEIGHT, SCREEN_WIDTH,
 			SCREEN_HEIGHT, dockColor);
@@ -546,7 +536,6 @@ void drawDesktopDock(struct RGB *dst) {
 	int p;
 	int windowCount = getWindowCount();
 
-	// Start button - accent color
 	struct RGBA startBtnColor;
 	startBtnColor.R = 66;
 	startBtnColor.G = 135;
@@ -559,7 +548,7 @@ void drawDesktopDock(struct RGB *dst) {
 	if (windowCount > 0) {
 		int xStart = START_ICON_WIDTH + 5;
 		int barWidth = min((SCREEN_WIDTH - START_ICON_WIDTH -
-				    SHOW_DESKTOP_ICON_WIDTH) /
+				    SHOW_DESKTOP_ICON_WIDTH - 90) /
 					   (windowCount + 1),
 				   DOCK_PROGRAM_NORMAL_WIDTH);
 		for (p = windowlisthead; p != -1; p = windowlist[p].next) {
@@ -578,7 +567,9 @@ void drawDesktopDock(struct RGB *dst) {
 		}
 	}
 
-	// Show desktop button
+	// TAMBAH: Gambar jam sebelum show desktop button
+	drawClock(dst);
+
 	drawRectByCoord(dst, SCREEN_WIDTH - SHOW_DESKTOP_ICON_WIDTH,
 			SCREEN_HEIGHT - DOCK_HEIGHT, SCREEN_WIDTH,
 			SCREEN_HEIGHT, startBtnColor);
@@ -586,7 +577,6 @@ void drawDesktopDock(struct RGB *dst) {
 		 SCREEN_HEIGHT - DOCK_HEIGHT + 3, 2, iconColor);
 }
 
-// the only place that actually updates the screen
 void updateScreen() {
 	acquire(&wmlock);
 	if (myproc() != windowlist[desktopId].proc) {
@@ -596,11 +586,9 @@ void updateScreen() {
 	}
 
 	memset(screen_buf, 255, screen_size);
-	// draw desktop first
 	drawWindow(&windowlist[desktopId].wnd);
 	drawDesktopDock(screen_buf);
 
-	// draw other windows in order
 	int p;
 	for (p = windowlisthead; p != -1; p = windowlist[p].next) {
 		if (p != desktopId && windowlist[p].wnd.minimized == 0) {
@@ -609,26 +597,22 @@ void updateScreen() {
 		}
 	}
 
-	// draw popup window if there is one
 	if (popupwindow.caller != -1) {
 		switchuvm(popupwindow.proc);
 		drawWindow(&popupwindow.wnd);
 	}
 
-	// switch back to the desktop process
 	if (myproc() == 0)
 		switchkvm();
 	else
 		switchuvm(myproc());
 
-	// draw the mouse
 	drawMouse(screen_buf, mouseShape, wm_mouse_pos.x, wm_mouse_pos.y);
 	memmove(screen, screen_buf, screen_size);
 
 	release(&wmlock);
 }
 
-// return window handler on succuss, -1 if unsuccessful
 int createWindow(window_p window, char *title) {
 	acquire(&wmlock);
 
@@ -644,7 +628,6 @@ int createWindow(window_p window, char *title) {
 
 	addToWindowList(winId);
 
-	// the first window is always the desktop
 	if (desktopId == -1) {
 		desktopId = winId;
 	}
@@ -675,7 +658,6 @@ int createWindow(window_p window, char *title) {
 
 	initMessageQueue(&windowlist[winId].wnd.msg_buf);
 
-	// Pastikan selalu ada ruang untuk null-terminator '\0'
 	int len = strlen(title);
 	if (len >= MAX_TITLE_LEN) {
 		len = MAX_TITLE_LEN - 1;
@@ -799,7 +781,6 @@ int turnoffScreen() {
 	return 0;
 }
 
-// system calls
 int sys_GUI_createPopupWindow() {
 	window *wnd;
 	int caller;

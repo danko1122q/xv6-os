@@ -232,6 +232,11 @@ void switchkvm(void);
 int copyout(pde_t *, uint, void *, uint);
 void clearpteu(pde_t *pgdir, char *uva);
 
+// rtc.c
+void            rtc_init(void);
+void            rtc_read_time(int*, int*, int*);
+void            rtc_read_date(int*, int*, int*);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
 
