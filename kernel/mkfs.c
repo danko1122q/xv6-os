@@ -6,6 +6,11 @@
 #include <unistd.h>
 #include <libgen.h>
 
+// Simpan definisi asli stat sebelum di-redefine
+#include <sys/stat.h>
+typedef struct stat host_stat_t;
+
+// Baru define stat untuk xv6
 #define stat xv6_stat
 #include "../include/fs.h"
 #include "../include/param.h"
@@ -67,6 +72,7 @@ int main(int argc, char *argv[]) {
 	struct dirent de;
 	char buf[BSIZE];
 	struct dinode din;
+	host_stat_t hst; // Gunakan typedef dari host
 
 	static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 
@@ -94,12 +100,14 @@ int main(int argc, char *argv[]) {
 	sb.logstart = xint(2);
 	sb.inodestart = xint(2 + nlog);
 	sb.bmapstart = xint(2 + nlog + ninodeblocks);
-	// [BARU] Inisialisasi checksum superblock jika diperlukan
 	sb.checksum = 0;
 
 	printf("nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap "
 	       "blocks %u) blocks %d total %d\n",
 	       nmeta, nlog, ninodeblocks, nbitmap, nblocks, FSSIZE);
+	printf("Max file size: %lu bytes (%lu MB)\n",
+	       (unsigned long)MAXFILE * BSIZE,
+	       (unsigned long)(MAXFILE * BSIZE) / (1024 * 1024));
 
 	freeblock = nmeta;
 
@@ -127,6 +135,7 @@ int main(int argc, char *argv[]) {
 		char *filepath = argv[i];
 		char *filename = basename(strdup(filepath));
 
+		// Skip underscore prefix for executables only
 		if (filename[0] == '_')
 			++filename;
 
@@ -135,27 +144,58 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 
+		// Check file size menggunakan host_stat
+		if (fstat(fd, &hst) < 0) {
+			perror("fstat");
+			close(fd);
+			exit(1);
+		}
+
+		printf("Adding: %s (%ld bytes, inode ", filename,
+		       (long)hst.st_size);
+
+		if (hst.st_size > MAXFILE * BSIZE) {
+			fprintf(stderr, "\nError: %s too large (%ld > %lu)\n",
+				filename, (long)hst.st_size,
+				(unsigned long)MAXFILE * BSIZE);
+			close(fd);
+			continue;
+		}
+
 		inum = ialloc(T_FILE);
+		printf("%d)\n", inum);
 
 		bzero(&de, sizeof(de));
 		de.inum = xshort(inum);
 		strncpy(de.name, filename, DIRSIZ);
 		iappend(rootino, &de, sizeof(de));
 
-		while ((cc = read(fd, buf, sizeof(buf))) > 0)
+		int total = 0;
+		while ((cc = read(fd, buf, sizeof(buf))) > 0) {
 			iappend(inum, buf, cc);
+			total += cc;
+			if (total % (1024 * 1024) == 0) {
+				printf("  ... %d KB written\n", total / 1024);
+			}
+		}
+
+		printf("  Total written: %d bytes\n", total);
 
 		close(fd);
 	}
 
 	// Fix up root inode size
 	rinode(rootino, &din);
-	off = xint(din.data.size); // PERBAIKAN: din.data.size
+	off = xint(din.data.size);
 	off = ((off / BSIZE) + 1) * BSIZE;
-	din.data.size = xint(off); // PERBAIKAN: din.data.size
+	din.data.size = xint(off);
 	winode(rootino, &din);
 
 	balloc(freeblock);
+
+	printf("Filesystem created successfully!\n");
+	printf("Free blocks remaining: %d\n",
+	       nblocks - (int)(freeblock - nmeta));
 
 	exit(0);
 }
@@ -210,9 +250,9 @@ uint ialloc(ushort type) {
 	struct dinode din;
 
 	bzero(&din, sizeof(din));
-	din.data.type = xshort(type); // PERBAIKAN: din.data.type
-	din.data.nlink = xshort(1);   // PERBAIKAN: din.data.nlink
-	din.data.size = xint(0);      // PERBAIKAN: din.data.size
+	din.data.type = xshort(type);
+	din.data.nlink = xshort(1);
+	din.data.size = xint(0);
 	winode(inum, &din);
 	return inum;
 }
@@ -242,50 +282,101 @@ void iappend(uint inum, void *xp, int n) {
 	uint x;
 
 	rinode(inum, &din);
-	off = xint(din.data.size); // PERBAIKAN: din.data.size
+	off = xint(din.data.size);
+
 	while (n > 0) {
 		fbn = off / BSIZE;
-		assert(fbn < MAXFILE);
+
+		if (fbn >= MAXFILE) {
+			fprintf(stderr,
+				"\niappend: file too large (block %u >= %lu)\n",
+				fbn, (unsigned long)MAXFILE);
+			exit(1);
+		}
 
 		if (fbn < NDIRECT) {
-			if (xint(din.data.addrs[fbn]) ==
-			    0) { // PERBAIKAN: din.data.addrs
+			if (xint(din.data.addrs[fbn]) == 0) {
+				if (freeblock >= (uint)(nmeta + nblocks)) {
+					fprintf(stderr,
+						"\nOut of data blocks!\n");
+					exit(1);
+				}
 				din.data.addrs[fbn] = xint(freeblock++);
 			}
 			x = xint(din.data.addrs[fbn]);
+
 		} else if (fbn < NDIRECT + NINDIRECT) {
-			if (xint(din.data.addrs[NDIRECT]) ==
-			    0) { // PERBAIKAN: din.data.addrs
+			uint idx = fbn - NDIRECT;
+
+			if (xint(din.data.addrs[NDIRECT]) == 0) {
+				if (freeblock >= (uint)(nmeta + nblocks)) {
+					fprintf(stderr, "\nOut of data blocks "
+							"(indirect)!\n");
+					exit(1);
+				}
 				din.data.addrs[NDIRECT] = xint(freeblock++);
 			}
+
 			rsect(xint(din.data.addrs[NDIRECT]), (char *)indirect);
-			if (indirect[fbn - NDIRECT] == 0) {
-				indirect[fbn - NDIRECT] = xint(freeblock++);
+
+			if (indirect[idx] == 0) {
+				if (freeblock >= (uint)(nmeta + nblocks)) {
+					fprintf(stderr,
+						"\nOut of data blocks!\n");
+					exit(1);
+				}
+				indirect[idx] = xint(freeblock++);
 				wsect(xint(din.data.addrs[NDIRECT]),
 				      (char *)indirect);
 			}
-			x = xint(indirect[fbn - NDIRECT]);
+			x = xint(indirect[idx]);
+
 		} else {
-			fbn -= (NDIRECT + NINDIRECT);
-			if (xint(din.data.addrs[NDIRECT + 1]) ==
-			    0) { // PERBAIKAN: din.data.addrs
+			uint idx1 = (fbn - NDIRECT - NINDIRECT) / NINDIRECT;
+			uint idx2 = (fbn - NDIRECT - NINDIRECT) % NINDIRECT;
+
+			if (idx1 >= NINDIRECT) {
+				fprintf(stderr, "\nDouble indirect index out "
+						"of range!\n");
+				exit(1);
+			}
+
+			if (xint(din.data.addrs[NDIRECT + 1]) == 0) {
+				if (freeblock >= (uint)(nmeta + nblocks)) {
+					fprintf(stderr, "\nOut of data blocks "
+							"(dindirect)!\n");
+					exit(1);
+				}
 				din.data.addrs[NDIRECT + 1] = xint(freeblock++);
 			}
+
 			rsect(xint(din.data.addrs[NDIRECT + 1]),
 			      (char *)indirect);
-			if (indirect[fbn / NINDIRECT] == 0) {
-				indirect[fbn / NINDIRECT] = xint(freeblock++);
+
+			if (indirect[idx1] == 0) {
+				if (freeblock >= (uint)(nmeta + nblocks)) {
+					fprintf(stderr, "\nOut of data blocks "
+							"(indirect2)!\n");
+					exit(1);
+				}
+				bzero(dindirect, sizeof(dindirect));
+				indirect[idx1] = xint(freeblock++);
 				wsect(xint(din.data.addrs[NDIRECT + 1]),
 				      (char *)indirect);
 			}
-			rsect(xint(indirect[fbn / NINDIRECT]),
-			      (char *)dindirect);
-			if (dindirect[fbn % NINDIRECT] == 0) {
-				dindirect[fbn % NINDIRECT] = xint(freeblock++);
-				wsect(xint(indirect[fbn / NINDIRECT]),
-				      (char *)dindirect);
+
+			rsect(xint(indirect[idx1]), (char *)dindirect);
+
+			if (dindirect[idx2] == 0) {
+				if (freeblock >= (uint)(nmeta + nblocks)) {
+					fprintf(stderr,
+						"\nOut of data blocks!\n");
+					exit(1);
+				}
+				dindirect[idx2] = xint(freeblock++);
+				wsect(xint(indirect[idx1]), (char *)dindirect);
 			}
-			x = xint(dindirect[fbn % NINDIRECT]);
+			x = xint(dindirect[idx2]);
 		}
 
 		n1 = min(n, (fbn + 1) * BSIZE - off);
@@ -296,6 +387,7 @@ void iappend(uint inum, void *xp, int n) {
 		off += n1;
 		p += n1;
 	}
-	din.data.size = xint(off); // PERBAIKAN: din.data.size
+
+	din.data.size = xint(off);
 	winode(inum, &din);
 }

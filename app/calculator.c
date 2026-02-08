@@ -430,7 +430,6 @@ int main(int argc, char *argv[]) {
 
 	while (1) {
 		updateWindow(&calcWindow);
-		GUI_updateScreen();
 	}
 
 	return 0;
