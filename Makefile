@@ -16,7 +16,7 @@ OBJDUMP = objdump
 
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror \
          -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -nostdinc -I$(I) \
-         -Wno-array-bounds
+         -Wno-array-bounds -Wno-infinite-recursion
 
 LDFLAGS = -m elf_i386
 
